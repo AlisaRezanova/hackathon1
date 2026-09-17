@@ -97,7 +97,7 @@
 
 Чтобы фичи не сталкивались на одних и тех же строках одного файла, планирующая сессия (до разделения работ) сама пишет и коммитит «швы» — точки подключения обеих фич, уже вставленные в приложение:
 
-- `backend/app/models.py` — все сущности сразу, одним файлом;
+- `backend/app/models.py` — все сущности сразу, одним файлом, как SQLAlchemy 2.0 ORM-модели (`Mapped`/`mapped_column`);
 - `backend/scripts/seed.py` — реалистичные демоданные сразу во все таблицы, которые нужны обеим фичам;
 - `backend/app/main.py` — `include_router` для обеих фич уже прописан, роутеры внутри — пустые заглушки;
 - `frontend/src/router.tsx` — оба маршрута уже заведены, экраны — пустые заглушки.
@@ -142,7 +142,7 @@
 
 - React + TypeScript + Vite на frontend;
 - backend на FastAPI (Python) с реальным API;
-- PostgreSQL как единственная БД;
+- PostgreSQL как единственная БД, доступ к ней — через SQLAlchemy 2.0 (`Mapped`/`mapped_column`, без Alembic — см. ниже);
 - один `docker-compose.yaml` в корне репозитория (без вложенных `infra/`-путей) поднимает БД и backend; frontend запускается локально (`npm run dev`) для быстрой правки и отладки — см. [Makefile](#makefile-для-локальной-разработки);
 - готовая дизайн-система и базовые компоненты на фронте;
 - адаптивная оболочка приложения;
@@ -183,7 +183,7 @@ Pydantic-схемы на backend и TS-типы на фронте описыва
 
 ## Makefile для локальной разработки
 
-Postgres и backend (FastAPI) поднимаются в Docker через один `docker-compose.yaml` в корне репозитория, а frontend запускается локально командой `npm run dev` — так быстрее смотреть результат и чинить ошибки, чем гонять весь стек в контейнерах. Файл `Makefile` уже лежит в корне репозитория; команды под капотом (`pip`, `ruff`, `pytest`) соответствуют выбранному стеку backend — FastAPI/Python. Миграций (Alembic) сознательно нет — схема одна и зафиксирована в замороженном `models.py`, `make seed`/`make reset-data` создают таблицы и наполняют их напрямую.
+Postgres и backend (FastAPI + SQLAlchemy 2.0) поднимаются в Docker через один `docker-compose.yaml` в корне репозитория, а frontend запускается локально командой `npm run dev` — так быстрее смотреть результат и чинить ошибки, чем гонять весь стек в контейнерах. Файл `Makefile` уже лежит в корне репозитория; команды под капотом (`pip`, `ruff`, `pytest`) соответствуют выбранному стеку backend — FastAPI/SQLAlchemy/Python. Миграций (Alembic) сознательно нет — схема одна и зафиксирована в замороженном `models.py` (SQLAlchemy 2.0 ORM-модели), `make seed`/`make reset-data` создают таблицы через `Base.metadata.create_all()` и наполняют их напрямую.
 
 ```makefile
 # Hackathon prototype — dev commands. See CLAUDE.MD and hackathon-vibecoding-guide.md.
@@ -279,8 +279,9 @@ reset-data: ## сброс демоданных: снести volume БД и по
 Требования:
 - Frontend: React, TypeScript и Vite.
 - Backend: FastAPI (Python) с реальным API.
-- База данных: PostgreSQL, без альтернатив и без ORM-абстракций
-  «на будущее».
+- База данных: PostgreSQL, без альтернатив. Доступ к ней — через
+  SQLAlchemy 2.0 (стиль `Mapped`/`mapped_column`), без Alembic и без
+  дополнительных ORM-абстракций «на будущее».
 - Весь проект (БД + backend) контейнеризируй через один `docker-compose.yaml`
   в корне репозитория, без лишних вложенных путей и без лишних сервисов.
   Frontend в контейнер не заворачивай — он должен запускаться локально
@@ -473,8 +474,8 @@ API + типы + UI твоей фичи, читающий данные из об
 затем улучши его визуально. Не редактируй `models.py`, `main.py`,
 `router.tsx`, `docker-compose.yaml` и `Makefile` — это зафиксированные
 «швы». Не добавляй новую инфраструктуру, авторизацию или зависимости
-сверх согласованного стека (FastAPI + PostgreSQL + Docker Compose) без
-крайней необходимости.
+сверх согласованного стека (FastAPI + SQLAlchemy 2.0 + PostgreSQL +
+Docker Compose) без крайней необходимости.
 
 После реализации:
 - пройди сценарий в браузере;
