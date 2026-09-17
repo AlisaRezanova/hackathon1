@@ -1,0 +1,113 @@
+/*
+  Design tokens — warm paper + deep ink registry look, built for HR record
+  data. Hairline borders instead of card shadows, serif headings for warmth,
+  system sans for dense UI text. See .claude/skills/frontend-design.
+*/
+:root {
+  --ink: #14181f;
+  --ink-soft: #454c58;
+  --paper: #f6f5f2;
+  --surface: #ffffff;
+  --line: #dfdcd3;
+  --line-strong: #c7c3b6;
+  --accent: #2f6f5e;
+  --accent-strong: #204f42;
+  --accent-tint: #e4efeb;
+  --amber: #b8763b;
+  --amber-tint: #f4e9db;
+  --danger: #b3432f;
+  --danger-tint: #f6e4df;
+
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --font-body:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  --shadow-drawer: -12px 0 32px rgba(20, 24, 31, 0.14);
+  --shadow-modal: 0 16px 48px rgba(20, 24, 31, 0.22);
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.2;
+  margin: 0;
+  color: var(--ink);
+}
+
+h1 {
+  font-size: 28px;
+}
+
+h2 {
+  font-size: 20px;
+}
+
+h3 {
+  font-size: 16px;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent-strong);
+}
+
+button {
+  font-family: inherit;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+::selection {
+  background: var(--accent-tint);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

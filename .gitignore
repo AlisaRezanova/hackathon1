@@ -1,0 +1,20 @@
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Backend
+backend/.venv/
+backend/**/__pycache__/
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/*.egg-info/
+
+# Env
+.env
+!.env.example
+
+# Editors / OS
+.DS_Store
+.vscode/
+.idea/
