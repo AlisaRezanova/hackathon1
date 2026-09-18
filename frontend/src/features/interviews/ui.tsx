@@ -66,9 +66,13 @@ interface AnsweredTurn extends ChatTurn {
 /**
  * Main screen: an AI-driven exit-interview chat that ends in a "problem
  * passport" (see HACKATHON.md). A quick "paste transcript" path and a
- * history drawer of past interviews (seed + chat) are offered alongside.
+ * history drawer of past interviews (seed + chat) are offered alongside —
+ * but only for HR (`/app/interviews`). When opened as `/interview/:token`
+ * (`employeeMode`), those are hidden: the link goes to one employee, so it
+ * must not expose the company-wide interview history or a link into the
+ * analytics dashboard. See router.tsx.
  */
-export function InterviewsPage() {
+export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolean } = {}) {
   const toast = useToast()
   const [phase, setPhase] = useState<Phase>('chat')
   const [turns, setTurns] = useState<AnsweredTurn[]>([])
@@ -78,6 +82,7 @@ export function InterviewsPage() {
   const [result, setResult] = useState<{ transcript: string; passport: Passport } | null>(null)
   const [pasteOpen, setPasteOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [employeeLink, setEmployeeLink] = useState<string | null>(null)
   const logRef = useRef<HTMLDivElement>(null)
 
   // Guards two race conditions that both showed up as "the same question
@@ -163,6 +168,17 @@ export function InterviewsPage() {
     submitAnswer(draft)
   }
 
+  function openEmployeeLinkModal() {
+    // Purely client-side (see router.tsx) — the token isn't checked against
+    // anything on the backend, it just gives each sent-out link a distinct
+    // URL. A short random id is enough for a demo; no persistence needed.
+    const token =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID().slice(0, 8)
+        : Math.random().toString(36).slice(2, 10)
+    setEmployeeLink(`${window.location.origin}/interview/${token}`)
+  }
+
   function handlePasteSubmit(payload: {
     department: string
     position: string
@@ -188,22 +204,23 @@ export function InterviewsPage() {
   return (
     <>
       <Header
-        eyebrow="Фича: interviews"
+        eyebrow={employeeMode ? undefined : 'Фича: interviews'}
         title="Exit-интервью → паспорт проблемы"
         actions={
-          phase === 'chat' ? (
+          employeeMode ? undefined : (
             <>
+              <Button variant="primary" onClick={openEmployeeLinkModal}>
+                Ссылка для сотрудника
+              </Button>
               <Button variant="secondary" onClick={() => setHistoryOpen(true)}>
                 История интервью
               </Button>
-              <Button variant="ghost" onClick={() => setPasteOpen(true)}>
-                Вставить готовый транскрипт
-              </Button>
+              {phase === 'chat' && (
+                <Button variant="ghost" onClick={() => setPasteOpen(true)}>
+                  Вставить готовый транскрипт
+                </Button>
+              )}
             </>
-          ) : (
-            <Button variant="secondary" onClick={() => setHistoryOpen(true)}>
-              История интервью
-            </Button>
           )
         }
       />
@@ -263,11 +280,11 @@ export function InterviewsPage() {
                   )}
                 </div>
 
-                {currentStep?.department_options && !loadingStep && (
+                {currentStep?.quick_replies && !loadingStep && (
                   <div className="iv-quick-replies">
-                    {currentStep.department_options.map((dept) => (
-                      <Button key={dept} variant="secondary" onClick={() => submitAnswer(dept)}>
-                        {dept}
+                    {currentStep.quick_replies.map((option) => (
+                      <Button key={option} variant="secondary" onClick={() => submitAnswer(option)}>
+                        {option}
                       </Button>
                     ))}
                   </div>
@@ -305,16 +322,58 @@ export function InterviewsPage() {
               transcript={result.transcript}
               passport={result.passport}
               onReset={startChat}
+              showDashboardLink={!employeeMode}
             />
           </Card>
         )}
       </div>
 
-      {pasteOpen && (
+      {!employeeMode && pasteOpen && (
         <PasteTranscriptModal onClose={() => setPasteOpen(false)} onSubmit={handlePasteSubmit} />
       )}
-      {historyOpen && <HistoryDrawer onClose={() => setHistoryOpen(false)} />}
+      {!employeeMode && historyOpen && <HistoryDrawer onClose={() => setHistoryOpen(false)} />}
+      {!employeeMode && employeeLink && (
+        <EmployeeLinkModal link={employeeLink} onClose={() => setEmployeeLink(null)} />
+      )}
     </>
+  )
+}
+
+function EmployeeLinkModal({ link, onClose }: { link: string; onClose: () => void }) {
+  const toast = useToast()
+
+  function copyLink() {
+    if (!navigator.clipboard) {
+      toast.show('Скопируйте ссылку вручную — буфер обмена недоступен', 'default')
+      return
+    }
+    navigator.clipboard.writeText(link).then(
+      () => toast.show('Ссылка скопирована', 'success'),
+      () => toast.show('Не удалось скопировать — выделите ссылку вручную', 'error'),
+    )
+  }
+
+  return (
+    <Modal
+      title="Ссылка для сотрудника"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Закрыть
+          </Button>
+          <Button onClick={copyLink}>Скопировать</Button>
+        </>
+      }
+    >
+      <p style={{ marginBottom: 14, fontSize: 13.5, color: 'var(--ink-soft)' }}>
+        Отправьте эту ссылку сотруднику — он пройдёт интервью на отдельной странице без меню и без
+        доступа к данным других сотрудников.
+      </p>
+      <Field label="Ссылка на интервью" htmlFor="employee-link">
+        <Input id="employee-link" readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
+      </Field>
+    </Modal>
   )
 }
 
@@ -340,10 +399,12 @@ function PassportCard({
   transcript,
   passport,
   onReset,
+  showDashboardLink = true,
 }: {
   transcript: string
   passport: Passport
   onReset: () => void
+  showDashboardLink?: boolean
 }) {
   const [showTranscript, setShowTranscript] = useState(false)
   const grouped = new Map<string, Passport['categories']>()
@@ -420,9 +481,11 @@ function PassportCard({
         <Button variant="secondary" onClick={() => setShowTranscript((v) => !v)}>
           {showTranscript ? 'Скрыть транскрипт' : 'Показать транскрипт'}
         </Button>
-        <Link to="/analytics" style={{ textDecoration: 'none' }}>
-          <Button variant="ghost">Смотреть на дашборде →</Button>
-        </Link>
+        {showDashboardLink && (
+          <Link to="/app/analytics" style={{ textDecoration: 'none' }}>
+            <Button variant="ghost">Смотреть на дашборде →</Button>
+          </Link>
+        )}
       </div>
 
       {showTranscript && (

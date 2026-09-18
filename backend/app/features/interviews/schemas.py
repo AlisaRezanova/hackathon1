@@ -33,7 +33,11 @@ class ChatResponse(BaseModel):
     step: int  # 1-based index of the question just asked (or last one, when done)
     kind: QuestionKind = "base"
     generated_by: GeneratedBy = "heuristic"
-    department_options: list[str] | None = None  # quick-reply hint for step 1
+    # Optional quick-reply buttons for this question — department names (step
+    # 1), common positions for the chosen department (step 2), or the known
+    # category labels (step 3). Always just a shortcut: the free-text answer
+    # box is shown alongside it, never replaced by it.
+    quick_replies: list[str] | None = None
 
 
 class CategoryItem(BaseModel):

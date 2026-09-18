@@ -25,3 +25,17 @@ export function AppShell() {
     </div>
   )
 }
+
+/**
+ * Bare layout for a link sent to a single employee (`/interview/:token`) —
+ * no sidebar, no nav into the HR app's Обзор/Аналитика. See router.tsx.
+ */
+export function EmployeeShell() {
+  return (
+    <div className="ui-shell ui-shell--solo">
+      <div className="ui-main">
+        <Outlet />
+      </div>
+    </div>
+  )
+}

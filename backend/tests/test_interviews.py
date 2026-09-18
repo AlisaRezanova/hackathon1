@@ -39,7 +39,7 @@ def test_chat_first_step_asks_department_question() -> None:
     assert body["kind"] == "base"
     assert body["done"] is False
     assert body["question"] == BASE_QUESTIONS[0]
-    assert body["department_options"]
+    assert body["quick_replies"]
 
 
 def test_chat_walks_through_all_base_questions() -> None:
@@ -50,6 +50,33 @@ def test_chat_walks_through_all_base_questions() -> None:
         assert body["kind"] == "base"
         assert body["question"] == expected_question
         turns.append({"question": body["question"], "answer": "Ответ на вопрос"})
+
+
+def test_chat_step2_suggests_positions_for_known_department() -> None:
+    turns = [{"question": BASE_QUESTIONS[0], "answer": "Разработка"}]
+    response = client.post("/api/interviews/chat", json={"turns": turns})
+    body = response.json()
+    assert body["step"] == 2
+    assert body["quick_replies"]
+    assert "Backend-разработчик" in body["quick_replies"]
+
+
+def test_chat_step2_has_no_suggestions_for_unknown_department() -> None:
+    turns = [{"question": BASE_QUESTIONS[0], "answer": "Совершенно новый отдел"}]
+    response = client.post("/api/interviews/chat", json={"turns": turns})
+    assert response.json()["quick_replies"] is None
+
+
+def test_chat_step3_suggests_known_category_labels() -> None:
+    turns = [
+        {"question": BASE_QUESTIONS[0], "answer": "Разработка"},
+        {"question": BASE_QUESTIONS[1], "answer": "Backend-разработчик"},
+    ]
+    response = client.post("/api/interviews/chat", json={"turns": turns})
+    body = response.json()
+    assert body["step"] == 3
+    assert "Карьерный рост" in body["quick_replies"]
+    assert "Компенсация" in body["quick_replies"]
 
 
 def test_chat_followup_falls_back_without_llm_key(monkeypatch) -> None:

@@ -16,6 +16,35 @@ const BASE_QUESTIONS = [
   'Опишите своими словами главную причину, по которой вы уходите.',
 ]
 
+// Mirrors backend/app/features/interviews/questions.py's suggestions —
+// simplified, since this path only runs when the backend is unreachable.
+const POSITION_SUGGESTIONS: Record<string, string[]> = {
+  Разработка: ['Backend-разработчик', 'Frontend-разработчик', 'QA-инженер', 'DevOps-инженер'],
+  Продажи: ['Менеджер по продажам', 'Account Executive', 'Sales Development Rep'],
+  Поддержка: ['Специалист поддержки', 'Тимлид поддержки'],
+  HR: ['HR-бизнес-партнёр', 'HR-аналитик'],
+  Маркетинг: ['Контент-специалист', 'Growth-аналитик'],
+}
+
+const CATEGORY_SUGGESTIONS = [
+  'Компенсация',
+  'Карьерный рост',
+  'Проблемы с руководством',
+  'Процессы и согласования',
+  'Перегрузка и выгорание',
+]
+
+function positionSuggestionsFor(departmentAnswer: string): string[] | null {
+  const candidate = departmentAnswer.trim().toLowerCase()
+  if (!candidate) return null
+  for (const [name, positions] of Object.entries(POSITION_SUGGESTIONS)) {
+    if (name.toLowerCase().includes(candidate) || candidate.includes(name.toLowerCase())) {
+      return positions
+    }
+  }
+  return null
+}
+
 const FALLBACK_FOLLOWUPS = [
   'Что конкретно произошло в последний раз, когда эта проблема стала особенно заметна?',
   'Вы пытались как-то решить это сами или обсудить с кем-то? Что именно вы делали?',
@@ -28,13 +57,17 @@ const MAX_FOLLOWUPS = FALLBACK_FOLLOWUPS.length
 export function localNextChatStep(turns: ChatTurn[]): ChatResponse {
   const step = turns.length + 1
   if (step <= BASE_QUESTIONS.length) {
+    let quickReplies: string[] | null = null
+    if (step === 1) quickReplies = DEPARTMENT_OPTIONS
+    else if (step === 2 && turns[0]) quickReplies = positionSuggestionsFor(turns[0].answer)
+    else if (step === 3) quickReplies = CATEGORY_SUGGESTIONS
     return {
       question: BASE_QUESTIONS[step - 1],
       done: false,
       step,
       kind: 'base',
       generated_by: 'heuristic',
-      department_options: step === 1 ? DEPARTMENT_OPTIONS : null,
+      quick_replies: quickReplies,
     }
   }
   const followupIndex = step - BASE_QUESTIONS.length
