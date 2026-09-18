@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import { ToastProvider } from '../shared/ui/Toast'
@@ -15,15 +15,21 @@ function renderHome() {
 }
 
 describe('Home', () => {
-  it('renders the demo roster table', () => {
+  it('renders the product entry point', () => {
     renderHome()
-    expect(screen.getByText('Ростер (демоданные)')).toBeInTheDocument()
-    expect(screen.getByText('Anna Ivanova')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Обзор exit-интервью' })).toBeInTheDocument()
+    expect(screen.getByText('Основные причины ухода')).toBeInTheDocument()
   })
 
-  it('shows a toast when the notification button is clicked', async () => {
+  it('links to both primary product scenarios', () => {
     renderHome()
-    fireEvent.click(screen.getByRole('button', { name: 'Показать уведомление' }))
-    expect(await screen.findByText('Демо-уведомление отправлено')).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /Новое интервью/i })[0]).toHaveAttribute(
+      'href',
+      '/app/interviews',
+    )
+    expect(screen.getAllByRole('link', { name: /Открыть аналитику/i })[0]).toHaveAttribute(
+      'href',
+      '/app/analytics',
+    )
   })
 })

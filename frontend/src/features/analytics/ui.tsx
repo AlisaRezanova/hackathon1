@@ -270,8 +270,9 @@ export function AnalyticsPage() {
   return (
     <>
       <Header
-        eyebrow="Фича: analytics"
-        title="Аналитика по компании"
+        eyebrow="Пульс организации"
+        title="Сигналы ухода"
+        description="Повторяющиеся причины, зоны риска и живые цитаты — в одной картине без потери контекста."
         actions={
           usedMock ? (
             <Badge tone="amber">Офлайн — демоданные</Badge>
@@ -288,7 +289,7 @@ export function AnalyticsPage() {
         )}
 
         {state === 'ready' && summary && (
-          <>
+          <div className="analytics-dashboard">
             <StatGrid>
               <StatCard
                 label="Всего интервью"
@@ -314,39 +315,38 @@ export function AnalyticsPage() {
               />
             </StatGrid>
 
-            <div style={{ height: 20 }} />
-
-            <Card title="Причины ухода — доля среди всех интервью">
+            <Card title="Что чаще всего приводит к уходу">
               {summary.category_breakdown.length === 0 ? (
                 <EmptyState title="Пока нет данных" />
               ) : (
                 <div className="analytics-bars">
-                  {summary.category_breakdown.map((row) => (
+                  {summary.category_breakdown.map((row, index) => (
                     <button
                       key={row.category}
                       type="button"
                       className="analytics-bar-row"
                       onClick={() => openCategory(row.category)}
                     >
-                      <div className="analytics-bar-head">
-                        <span className="analytics-bar-name">{row.category}</span>
-                        <span className="analytics-bar-meta">
-                          {row.percent}% · {row.count} интервью
-                        </span>
-                      </div>
-                      <div className="analytics-bar-track">
-                        <div
-                          className="analytics-bar-fill"
-                          style={{ width: `${Math.max(row.percent, 3)}%` }}
-                        />
+                      <span className="analytics-bar-rank">{String(index + 1).padStart(2, '0')}</span>
+                      <div className="analytics-bar-main">
+                        <div className="analytics-bar-head">
+                          <span className="analytics-bar-name">{row.category}</span>
+                          <span className="analytics-bar-meta">
+                            <strong>{row.percent}%</strong> · {row.count} интервью
+                          </span>
+                        </div>
+                        <div className="analytics-bar-track">
+                          <div
+                            className="analytics-bar-fill"
+                            style={{ width: `${Math.max(row.percent, 3)}%` }}
+                          />
+                        </div>
                       </div>
                     </button>
                   ))}
                 </div>
               )}
             </Card>
-
-            <div style={{ height: 20 }} />
 
             <Card title="Риск ухода по отделам">
               {departmentRows.length === 0 ? (
@@ -355,7 +355,7 @@ export function AnalyticsPage() {
                 <DataTable columns={departmentColumns(openDepartment)} rows={departmentRows} />
               )}
             </Card>
-          </>
+          </div>
         )}
       </div>
 

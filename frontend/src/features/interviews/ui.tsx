@@ -9,6 +9,7 @@ import { Card } from '../../shared/ui/Card'
 import { Drawer } from '../../shared/ui/Drawer'
 import { Field, Input, Select, TextArea } from '../../shared/ui/Form'
 import { Header } from '../../shared/ui/Header'
+import { Icon } from '../../shared/ui/Icons'
 import { Modal } from '../../shared/ui/Modal'
 import { EmptyState, ErrorState, LoadingState } from '../../shared/ui/States'
 import { useToast } from '../../shared/ui/toastContext'
@@ -204,8 +205,9 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
   return (
     <>
       <Header
-        eyebrow={employeeMode ? undefined : 'Фича: interviews'}
-        title="Exit-интервью → паспорт проблемы"
+        eyebrow={employeeMode ? undefined : 'Конфиденциальный разговор'}
+        title="Exit-интервью"
+        description="AI ведёт разговор бережно, уточняет факты и сохраняет формулировки сотрудника без домыслов."
         actions={
           employeeMode ? undefined : (
             <>
@@ -213,7 +215,7 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
                 Ссылка для сотрудника
               </Button>
               <Button variant="secondary" onClick={() => setHistoryOpen(true)}>
-                История интервью
+                <Icon name="history" /> История
               </Button>
               {phase === 'chat' && (
                 <Button variant="ghost" onClick={() => setPasteOpen(true)}>
@@ -326,6 +328,22 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
             />
           </Card>
         )}
+        <aside className="iv-context">
+          <div className="iv-context__label">Как проходит разговор</div>
+          <div className="iv-context__step">
+            <span>1</span>
+            <div><strong>Контекст</strong><small>Отдел, роль и причина решения</small></div>
+          </div>
+          <div className="iv-context__step">
+            <span>2</span>
+            <div><strong>Уточнения</strong><small>AI запрашивает пример и доказательство</small></div>
+          </div>
+          <div className="iv-context__step">
+            <span>3</span>
+            <div><strong>Паспорт</strong><small>Причины, цитаты и гипотезы решения</small></div>
+          </div>
+          <p>Обычно достаточно 5–7 минут. Ответы можно давать в свободной форме.</p>
+        </aside>
       </div>
 
       {!employeeMode && pasteOpen && (
@@ -483,7 +501,7 @@ function PassportCard({
         </Button>
         {showDashboardLink && (
           <Link to="/app/analytics" style={{ textDecoration: 'none' }}>
-            <Button variant="ghost">Смотреть на дашборде →</Button>
+            <Button variant="ghost">Смотреть в аналитике <Icon name="arrow" /></Button>
           </Link>
         )}
       </div>

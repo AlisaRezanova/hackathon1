@@ -1,304 +1,80 @@
-/* Styles for the interviews feature (chat + problem passport). Prefixed
-   `iv-` so nothing collides with shared/ui/ui.css — see .claude/skills/frontend-design. */
+.iv-layout { display: grid; grid-template-columns: minmax(500px, 790px) minmax(230px, 310px); align-items: start; gap: clamp(24px, 4vw, 58px); max-width: 1210px; }
+.iv-layout > .ui-card { position: relative; min-height: 590px; padding: clamp(24px, 3vw, 42px); border: 0; background: var(--surface-raised); box-shadow: 0 18px 50px rgba(22,49,47,.07); }
+.iv-progress { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; padding-bottom: 18px; border-bottom: 1px solid var(--line); color: var(--ink-soft); font-size: 12px; }
+.iv-progress__dots { display: flex; gap: 6px; }
+.iv-progress__dot { width: 22px; height: 4px; border-radius: 99px; background: var(--line); }
+.iv-progress__dot--done { background: var(--accent); }
+.iv-progress__dot--current { background: var(--coral); }
+.iv-chat__log { display: flex; flex-direction: column; gap: 12px; min-height: 260px; max-height: 48vh; margin-bottom: 24px; padding: 2px 6px 10px 0; overflow-y: auto; scroll-behavior: smooth; }
+.iv-bubble { max-width: 82%; padding: 13px 16px; border-radius: 18px; font-size: 14px; line-height: 1.5; }
+.iv-bubble--question { align-self: flex-start; border-bottom-left-radius: 5px; background: var(--paper); color: var(--ink-deep); }
+.iv-bubble--answer { align-self: flex-end; border-bottom-right-radius: 5px; background: var(--ink-deep); color: white; }
+.iv-bubble__meta { display: block; margin-top: 5px; color: var(--ink-soft); font-size: 10.5px; }
+.iv-bubble--answer .iv-bubble__meta { color: rgba(255,255,255,.62); }
+.iv-quick-replies { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 16px; }
+.iv-quick-replies .ui-btn { min-height: 38px; padding: 8px 14px; border-radius: 99px; }
+.iv-composer { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10px; padding-top: 18px; border-top: 1px solid var(--line); }
+.iv-composer textarea { min-height: 48px; max-height: 140px; resize: none; }
+.iv-composer .ui-btn { min-height: 48px; }
+.iv-typing { align-self: flex-start; display: flex; gap: 4px; padding: 13px 17px; border-radius: 18px; border-bottom-left-radius: 5px; background: var(--paper); }
+.iv-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: iv-typing-bounce 1s infinite ease-in-out; }
+.iv-typing span:nth-child(2) { animation-delay: .15s; }
+.iv-typing span:nth-child(3) { animation-delay: .3s; }
+@keyframes iv-typing-bounce { 0%, 60%, 100% { opacity: .3; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
 
-.iv-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 640px);
-  gap: 20px;
-}
+.iv-context { position: sticky; top: 36px; padding: 22px 0; }
+.iv-context__label { margin-bottom: 24px; color: var(--ink-soft); font-size: 12px; }
+.iv-context__step { position: relative; display: grid; grid-template-columns: 30px 1fr; gap: 13px; padding-bottom: 24px; }
+.iv-context__step:not(:last-of-type)::after { content: ''; position: absolute; left: 14px; top: 30px; bottom: 2px; width: 1px; background: var(--line-strong); }
+.iv-context__step > span { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--paper); color: var(--accent-strong); font-size: 11px; font-weight: 650; }
+.iv-context__step div { display: flex; flex-direction: column; }
+.iv-context__step strong { color: var(--ink-deep); font-size: 13px; }
+.iv-context__step small { margin-top: 2px; color: var(--ink-soft); line-height: 1.4; }
+.iv-context > p { margin-top: 10px; padding: 16px; border-radius: 14px; background: var(--accent-tint); color: var(--accent-strong); font-size: 12px; line-height: 1.5; }
 
-.iv-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-  font-size: 13px;
-  color: var(--ink-soft);
-}
+/* Passport */
+.iv-passport__head { margin-bottom: 9px; }
+.iv-passport__title { color: var(--ink-deep); font-size: clamp(28px, 3vw, 40px); font-weight: 620; line-height: 1.1; letter-spacing: -.045em; }
+.iv-passport__badges { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
+.iv-passport__reason { max-width: 680px; margin-bottom: 30px; color: var(--ink-soft); font-size: 14px; }
+.iv-section { margin: 28px 0; padding-top: 24px; border-top: 1px solid var(--line); }
+.iv-section__title { margin-bottom: 16px; color: var(--ink-deep); font-size: 14px; font-weight: 630; }
+.iv-category-group { margin-bottom: 18px; }
+.iv-category-group__name { margin-bottom: 8px; color: var(--accent-strong); font-size: 12px; font-weight: 650; }
+.iv-quote-item { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; padding: 11px 0; border-top: 1px solid var(--line); }
+.iv-quote-item:first-of-type { border-top: 0; }
+.iv-quote-item__body { min-width: 0; }
+.iv-quote-item__subtype { margin-bottom: 4px; color: var(--ink-soft); font-size: 11.5px; }
+.iv-quote-item__quote { color: var(--ink-deep); font-size: 14px; font-weight: 510; line-height: 1.45; }
+.iv-quote-item__quote::before { content: '«'; color: var(--coral); }
+.iv-quote-item__quote::after { content: '»'; color: var(--coral); }
+.iv-quote-item__mentions { flex: 0 0 auto; color: var(--ink-soft); font-size: 11px; }
+.iv-suggestions { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; counter-reset: suggestion; }
+.iv-suggestions li { position: relative; padding: 13px 16px 13px 46px; border-radius: 13px; background: var(--paper); font-size: 13.5px; counter-increment: suggestion; }
+.iv-suggestions li::before { content: counter(suggestion); position: absolute; left: 15px; top: 12px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface-raised); color: var(--accent-strong); font-size: 10px; font-weight: 650; }
+.iv-sentiment { display: block; width: 100%; height: 112px; }
+.iv-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 26px; }
+.iv-actions a { text-decoration: none; }
+.iv-actions svg { width: 17px; height: 17px; }
 
-.iv-progress__dots {
-  display: flex;
-  gap: 5px;
-}
+/* Drawer and modal specifics */
+.iv-history-row { display: flex; width: 100%; flex-direction: column; gap: 5px; padding: 15px 0; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; cursor: pointer; text-align: left; }
+.iv-history-row:first-child { border-top: 0; }
+.iv-history-row:hover { color: var(--accent-strong); }
+.iv-history-row__top { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; font-weight: 580; }
+.iv-history-row__meta { display: flex; flex-wrap: wrap; gap: 5px; color: var(--ink-soft); font-size: 11px; }
+.iv-example-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
 
-.iv-progress__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--line-strong);
+@media (max-width: 1120px) {
+  .iv-layout { grid-template-columns: minmax(0, 1fr); }
+  .iv-context { display: none; }
 }
-
-.iv-progress__dot--done {
-  background: var(--accent);
+@media (max-width: 620px) {
+  .iv-layout > .ui-card { min-height: 520px; padding: 20px 16px; border-radius: 18px; }
+  .iv-progress { align-items: flex-start; flex-direction: column; }
+  .iv-progress__dot { width: 18px; }
+  .iv-bubble { max-width: 92%; }
+  .iv-composer { grid-template-columns: 1fr; }
+  .iv-composer .ui-btn { width: 100%; }
 }
-
-.iv-progress__dot--current {
-  background: var(--amber);
-}
-
-.iv-chat__log {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 18px;
-  max-height: 50vh;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.iv-bubble {
-  max-width: 88%;
-  padding: 10px 14px;
-  border-radius: var(--radius-lg);
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-.iv-bubble--question {
-  align-self: flex-start;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-bottom-left-radius: 4px;
-}
-
-.iv-bubble--answer {
-  align-self: flex-end;
-  background: var(--accent);
-  color: #fff;
-  border-bottom-right-radius: 4px;
-}
-
-.iv-bubble__meta {
-  display: block;
-  font-size: 11px;
-  margin-top: 4px;
-  opacity: 0.7;
-}
-
-.iv-quick-replies {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.iv-composer {
-  display: flex;
-  gap: 10px;
-  align-items: flex-end;
-}
-
-.iv-composer textarea {
-  flex: 1;
-  min-height: 44px;
-  max-height: 140px;
-}
-
-.iv-typing {
-  align-self: flex-start;
-  display: flex;
-  gap: 4px;
-  padding: 10px 14px;
-}
-
-.iv-typing span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--line-strong);
-  animation: iv-typing-bounce 1s infinite ease-in-out;
-}
-
-.iv-typing span:nth-child(2) {
-  animation-delay: 0.15s;
-}
-
-.iv-typing span:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-@keyframes iv-typing-bounce {
-  0%,
-  60%,
-  100% {
-    opacity: 0.35;
-    transform: translateY(0);
-  }
-  30% {
-    opacity: 1;
-    transform: translateY(-3px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .iv-typing span {
-    animation: none;
-    opacity: 0.7;
-  }
-}
-
-/* ---- Passport ---- */
-.iv-passport__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-
-.iv-passport__title {
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 600;
-}
-
-.iv-passport__badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 18px;
-}
-
-.iv-passport__reason {
-  font-size: 13px;
-  color: var(--ink-soft);
-  margin: -10px 0 18px;
-}
-
-.iv-section {
-  margin-bottom: 22px;
-}
-
-.iv-section__title {
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--ink-soft);
-  margin-bottom: 10px;
-}
-
-.iv-category-group {
-  margin-bottom: 12px;
-}
-
-.iv-category-group__name {
-  font-weight: 600;
-  font-size: 14px;
-  margin-bottom: 6px;
-}
-
-.iv-quote-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  align-items: baseline;
-  padding: 8px 0;
-  border-top: 1px solid var(--line);
-}
-
-.iv-quote-item:first-child {
-  border-top: none;
-}
-
-.iv-quote-item__body {
-  min-width: 0;
-}
-
-.iv-quote-item__subtype {
-  font-size: 13px;
-  color: var(--ink-soft);
-  margin-bottom: 3px;
-}
-
-.iv-quote-item__quote {
-  font-style: italic;
-  font-size: 13.5px;
-  color: var(--ink);
-}
-
-.iv-quote-item__quote::before {
-  content: '\201C';
-}
-
-.iv-quote-item__quote::after {
-  content: '\201D';
-}
-
-.iv-quote-item__mentions {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--ink-soft);
-  white-space: nowrap;
-}
-
-.iv-suggestions {
-  margin: 0;
-  padding-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 14px;
-}
-
-.iv-sentiment {
-  display: block;
-  width: 100%;
-  height: 84px;
-}
-
-.iv-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 4px;
-}
-
-/* ---- History drawer rows ---- */
-.iv-history-row {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 12px 0;
-  border-top: 1px solid var(--line);
-  cursor: pointer;
-  background: none;
-  border-left: none;
-  border-right: none;
-  border-bottom: none;
-  text-align: left;
-  width: 100%;
-  font: inherit;
-  color: inherit;
-}
-
-.iv-history-row:first-child {
-  border-top: none;
-}
-
-.iv-history-row:hover {
-  color: var(--accent-strong);
-}
-
-.iv-history-row__top {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 13.5px;
-  font-weight: 500;
-}
-
-.iv-history-row__meta {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: var(--ink-soft);
-}
-
-.iv-example-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 14px;
-}
+@media (prefers-reduced-motion: reduce) { .iv-typing span { animation: none; opacity: .7; } }
