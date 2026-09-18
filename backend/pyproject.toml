@@ -25,6 +25,9 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+# B008: FastAPI's `Depends(...)` in argument defaults is the idiomatic DI
+# pattern, not a real mutable-default bug.
+ignore = ["B008"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
