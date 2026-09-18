@@ -16,7 +16,10 @@ export interface ChatResponse {
   step: number
   kind: QuestionKind
   generated_by: GeneratedBy
-  department_options?: string[] | null
+  // Suggested answers for this question — department names (step 1), common
+  // positions for the chosen department (step 2), or known category labels
+  // (step 3). Always just a shortcut alongside the free-text input.
+  quick_replies?: string[] | null
 }
 
 export interface CategoryItem {

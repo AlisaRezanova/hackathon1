@@ -21,9 +21,11 @@ from app.features.interviews.heuristic import (
 from app.features.interviews.llm import generate_followup_question, generate_llm_passport
 from app.features.interviews.questions import (
     BASE_QUESTIONS,
+    CATEGORY_SUGGESTIONS,
     DEPARTMENT_OPTIONS,
     MAX_FOLLOWUPS,
     pick_fallback_followup,
+    position_suggestions_for,
 )
 from app.features.interviews.schemas import (
     AnalyzeRequest,
@@ -47,13 +49,20 @@ def build_chat_response(request: ChatRequest) -> ChatResponse:
     step = len(turns) + 1
 
     if step <= len(BASE_QUESTIONS):
+        quick_replies: list[str] | None = None
+        if step == 1:
+            quick_replies = DEPARTMENT_OPTIONS
+        elif step == 2 and turns:
+            quick_replies = position_suggestions_for(turns[0].answer)
+        elif step == 3:
+            quick_replies = CATEGORY_SUGGESTIONS
         return ChatResponse(
             question=BASE_QUESTIONS[step - 1],
             done=False,
             step=step,
             kind="base",
             generated_by="heuristic",
-            department_options=DEPARTMENT_OPTIONS if step == 1 else None,
+            quick_replies=quick_replies,
         )
 
     followup_index = step - len(BASE_QUESTIONS)

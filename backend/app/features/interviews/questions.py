@@ -14,6 +14,7 @@ REACTED. That's what turns "AI just chatted" into "AI actually dug up the
 real cause" (see KOSTYA_PLAN.md's "Заметка: качество уточняющих вопросов").
 """
 
+from app.features.interviews.heuristic import KNOWN_CATEGORIES
 from app.features.interviews.schemas import ChatTurn
 
 DEPARTMENT_OPTIONS = ["Разработка", "Продажи", "Поддержка", "HR", "Маркетинг"]
@@ -25,6 +26,36 @@ BASE_QUESTIONS = [
 ]
 
 MAX_FOLLOWUPS = 3
+
+# Quick-reply suggestions for step 2 (position), by department — mirrors the
+# roles already used in scripts/seed.py so the buttons feel consistent with
+# the demo data. Purely a UX shortcut: a free-text answer always works too.
+POSITION_SUGGESTIONS: dict[str, list[str]] = {
+    "Разработка": ["Backend-разработчик", "Frontend-разработчик", "QA-инженер", "DevOps-инженер"],
+    "Продажи": ["Менеджер по продажам", "Account Executive", "Sales Development Rep"],
+    "Поддержка": ["Специалист поддержки", "Тимлид поддержки"],
+    "HR": ["HR-бизнес-партнёр", "HR-аналитик"],
+    "Маркетинг": ["Контент-специалист", "Growth-аналитик"],
+}
+
+# Quick-reply suggestions for step 3 (main reason) — the same canonical
+# category labels the analyze pipeline normalizes into (see heuristic.py /
+# llm.py). Picking one here means the transcript already contains the exact
+# canonical string, which is the easiest way to avoid a fragmented new
+# category down the line.
+CATEGORY_SUGGESTIONS = KNOWN_CATEGORIES
+
+
+def position_suggestions_for(department_answer: str) -> list[str] | None:
+    """Loose-match the free-text department answer to a known department."""
+    candidate = department_answer.strip().lower()
+    if not candidate:
+        return None
+    for name, positions in POSITION_SUGGESTIONS.items():
+        if name.lower() in candidate or candidate in name.lower():
+            return positions
+    return None
+
 
 # (keywords to match anywhere in the answers so far) -> ordered ladder of
 # follow-ups, each targeting a different evidence slot: WHAT happened

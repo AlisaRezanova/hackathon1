@@ -280,11 +280,11 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
                   )}
                 </div>
 
-                {currentStep?.department_options && !loadingStep && (
+                {currentStep?.quick_replies && !loadingStep && (
                   <div className="iv-quick-replies">
-                    {currentStep.department_options.map((dept) => (
-                      <Button key={dept} variant="secondary" onClick={() => submitAnswer(dept)}>
-                        {dept}
+                    {currentStep.quick_replies.map((option) => (
+                      <Button key={option} variant="secondary" onClick={() => submitAnswer(option)}>
+                        {option}
                       </Button>
                     ))}
                   </div>
@@ -367,16 +367,11 @@ function EmployeeLinkModal({ link, onClose }: { link: string; onClose: () => voi
       }
     >
       <p style={{ marginBottom: 14, fontSize: 13.5, color: 'var(--ink-soft)' }}>
-        Отправьте эту ссылку сотруднику — он пройдёт интервью на отдельной странице без меню и
-        без доступа к данным других сотрудников.
+        Отправьте эту ссылку сотруднику — он пройдёт интервью на отдельной странице без меню и без
+        доступа к данным других сотрудников.
       </p>
       <Field label="Ссылка на интервью" htmlFor="employee-link">
-        <Input
-          id="employee-link"
-          readOnly
-          value={link}
-          onFocus={(e) => e.currentTarget.select()}
-        />
+        <Input id="employee-link" readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
       </Field>
     </Modal>
   )
