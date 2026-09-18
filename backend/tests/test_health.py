@@ -16,6 +16,9 @@ def test_interviews_stub() -> None:
     assert response.status_code == 200
 
 
-def test_analytics_stub() -> None:
-    response = client.get("/api/analytics/ping")
+def test_analytics_summary() -> None:
+    response = client.get("/api/analytics/summary")
     assert response.status_code == 200
+    body = response.json()
+    assert "category_breakdown" in body
+    assert "department_risk" in body
