@@ -417,6 +417,140 @@
         line-height: 1.4;
       }
 
+      /* Slide 4 */
+      .build-main {
+        grid-template-columns: minmax(390px, 0.82fr) minmax(620px, 1.18fr);
+        gap: clamp(50px, 7vw, 126px);
+      }
+
+      .build-copy {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: clamp(22px, 3vh, 36px);
+      }
+
+      .build-lead {
+        max-width: 630px;
+        color: var(--ink-soft);
+        font-size: clamp(18px, 1.55vw, 26px);
+        line-height: 1.46;
+      }
+
+      .build-note {
+        max-width: 600px;
+        padding-left: 22px;
+        border-left: 2px solid var(--green);
+        font-size: clamp(14px, 1.18vw, 19px);
+        line-height: 1.5;
+      }
+
+      .build-visual {
+        display: grid;
+        align-content: center;
+        gap: clamp(26px, 3.4vh, 42px);
+      }
+
+      .makers {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: clamp(18px, 2vw, 30px);
+      }
+
+      .maker {
+        min-height: clamp(170px, 21vh, 230px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        border-radius: 16px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+      }
+
+      .maker:first-child {
+        background: var(--amber-pale);
+        border-color: #dfc7ad;
+      }
+
+      .maker img {
+        width: clamp(64px, 6vw, 94px);
+        height: clamp(64px, 6vw, 94px);
+        object-fit: contain;
+      }
+
+      .maker strong {
+        font-size: clamp(18px, 1.5vw, 25px);
+      }
+
+      .maker-plus {
+        color: var(--green);
+        font-family: var(--display);
+        font-size: clamp(36px, 3.6vw, 58px);
+      }
+
+      .stack-line {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 22px 26px;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .stack-item,
+      .model-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        white-space: nowrap;
+        font-size: clamp(13px, 1vw, 17px);
+        font-weight: 700;
+      }
+
+      .stack-item img,
+      .model-item img {
+        width: clamp(28px, 2.4vw, 38px);
+        height: clamp(28px, 2.4vw, 38px);
+        object-fit: contain;
+      }
+
+      .model-line {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 20px;
+        padding: clamp(22px, 2.2vw, 32px);
+        border-radius: 14px;
+        background: var(--green-dark);
+        color: white;
+      }
+
+      .model-line .model-item:last-child {
+        justify-self: end;
+      }
+
+      .model-line .model-item img {
+        filter: invert(1);
+      }
+
+      .model-connector {
+        width: clamp(58px, 6vw, 94px);
+        height: 1px;
+        background: rgba(255, 255, 255, 0.55);
+      }
+
+      .model-copy {
+        display: block;
+        margin-top: 4px;
+        color: #cbdcd6;
+        font-size: clamp(11px, 0.82vw, 14px);
+        font-weight: 500;
+      }
+
       @keyframes grow {
         from {
           transform: scaleX(0);
@@ -458,7 +592,7 @@
         bottom: 0;
         z-index: 11;
         height: 4px;
-        width: 33.333%;
+        width: 25%;
         background: var(--green);
         transition: width 300ms ease;
       }
@@ -466,7 +600,8 @@
       @media (max-width: 900px), (max-height: 650px) {
         .hero-layout,
         .result-main,
-        .process-heading {
+        .process-heading,
+        .build-main {
           grid-template-columns: 1fr;
         }
 
@@ -512,6 +647,27 @@
         .demo-sequence {
           display: none;
         }
+
+        .build-main {
+          gap: 22px;
+        }
+
+        .build-copy {
+          gap: 12px;
+        }
+
+        .build-note {
+          display: none;
+        }
+
+        .makers {
+          max-width: 720px;
+          margin: 0 auto;
+        }
+
+        .maker {
+          min-height: 120px;
+        }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -556,7 +712,7 @@
 
         <footer class="footer">
           <span>От отдельных разговоров к общей картине</span>
-          <span class="slide-number">01 / 03</span>
+          <span class="slide-number">01 / 04</span>
         </footer>
       </section>
 
@@ -602,7 +758,7 @@
 
         <footer class="footer">
           <span>React + FastAPI + PostgreSQL · OpenRouter + heuristic fallback</span>
-          <span class="slide-number">02 / 03</span>
+          <span class="slide-number">02 / 04</span>
         </footer>
       </section>
 
@@ -655,7 +811,66 @@
 
         <footer class="footer">
           <span>Решение помогает реагировать до следующей волны увольнений</span>
-          <span class="slide-number">03 / 03</span>
+          <span class="slide-number">03 / 04</span>
+        </footer>
+      </section>
+
+      <section class="slide" aria-hidden="true">
+        <header class="topline">
+          <div class="brand"><span class="mark">EI</span> Exit Intelligence</div>
+          <div class="section-label">Как собрали прототип</div>
+        </header>
+
+        <div class="slide-main build-main">
+          <div class="build-copy">
+            <h2>AI помог команде быстрее пройти путь от идеи до демо</h2>
+            <p class="build-lead">
+              Claude Code помогал собирать frontend и backend, проверять сценарии и держать
+              продукт цельным. GitHub сохранил единую историю изменений и упростил интеграцию.
+            </p>
+            <p class="build-note">
+              Архитектуру намеренно оставили компактной: один репозиторий, одна база и запуск
+              всего стенда через Docker Compose.
+            </p>
+          </div>
+
+          <div class="build-visual">
+            <div class="makers" aria-label="Инструменты разработки">
+              <div class="maker">
+                <img src="presentation-assets/claude.svg" alt="Логотип Claude" />
+                <strong>Claude Code</strong>
+              </div>
+              <span class="maker-plus" aria-hidden="true">+</span>
+              <div class="maker">
+                <img src="presentation-assets/github.svg" alt="Логотип GitHub" />
+                <strong>GitHub</strong>
+              </div>
+            </div>
+
+            <div class="stack-line" aria-label="Технический стек">
+              <span class="stack-item"><img src="presentation-assets/react.svg" alt="" />React</span>
+              <span class="stack-item"><img src="presentation-assets/fastapi.svg" alt="" />FastAPI</span>
+              <span class="stack-item"><img src="presentation-assets/postgresql.svg" alt="" />PostgreSQL</span>
+              <span class="stack-item"><img src="presentation-assets/docker.svg" alt="" />Docker</span>
+            </div>
+
+            <div class="model-line" aria-label="LLM-стек">
+              <div class="model-item">
+                <img src="presentation-assets/openrouter.svg" alt="Логотип OpenRouter" />
+                <span>OpenRouter<span class="model-copy">доступ к модели</span></span>
+              </div>
+              <span class="model-connector" aria-hidden="true"></span>
+              <div class="model-item">
+                <img src="presentation-assets/deepseek.svg" alt="Логотип DeepSeek" />
+                <span>DeepSeek<span class="model-copy">LLM для интервью и анализа</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="footer">
+          <span>Компактный стек рассчитан на надёжное живое демо</span>
+          <span class="slide-number">04 / 04</span>
         </footer>
       </section>
     </main>
