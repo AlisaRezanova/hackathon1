@@ -7,8 +7,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.features.ranking.router import router as ranking_router
-from app.features.turnover.router import router as turnover_router
+from app.features.analytics.router import router as analytics_router
+from app.features.interviews.router import router as interviews_router
 
 app = FastAPI(title="Hackathon HR prototype API")
 
@@ -20,8 +20,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(ranking_router)
-app.include_router(turnover_router)
+app.include_router(interviews_router)
+app.include_router(analytics_router)
 
 
 @app.get("/api/health")

@@ -28,6 +28,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hackathon}
       POSTGRES_DB: ${POSTGRES_DB:-hackathon}
       CORS_ORIGINS: '["http://localhost:5173"]'
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-deepseek/deepseek-v4-flash-0731}
     ports:
       - "8000:8000"
     depends_on:

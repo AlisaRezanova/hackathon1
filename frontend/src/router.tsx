@@ -1,6 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom'
-import { RankingPage } from './features/ranking/ui'
-import { TurnoverPage } from './features/turnover/ui'
+import { AnalyticsPage } from './features/analytics/ui'
+import { InterviewsPage } from './features/interviews/ui'
 import { Home } from './pages/Home'
 import { AppShell } from './shared/ui/Layout'
 
@@ -15,8 +15,8 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { index: true, element: <Home /> },
-      { path: 'ranking', element: <RankingPage /> },
-      { path: 'turnover', element: <TurnoverPage /> },
+      { path: 'interviews', element: <InterviewsPage /> },
+      { path: 'analytics', element: <AnalyticsPage /> },
     ],
   },
 ])

@@ -1,9 +1,11 @@
-# Hackathon HR prototype — template
+# Exit Intelligence — HR-прототип хакатона
 
-Легкий шаблон для двухчасового хакатона по вайбкодингу. Стек: React + TypeScript + Vite
-(frontend, локально), FastAPI + SQLAlchemy 2.0 + PostgreSQL (backend, в Docker). Правила
-работы — в [`CLAUDE.md`](./CLAUDE.md), контекст подготовки — в
-[`hackathon-vibecoding-guide.md`](./hackathon-vibecoding-guide.md).
+Прототип для двухчасового хакатона по вайбкодингу: превращает сырой транскрипт
+exit-интервью в структурированный "паспорт проблемы" и агрегированную аналитику по
+компании. Стек: React + TypeScript + Vite (frontend, локально), FastAPI + SQLAlchemy 2.0 +
+PostgreSQL (backend, в Docker). Задание, разделение работы и сценарий демо — в
+[`HACKATHON.md`](./HACKATHON.md); общие правила — в [`CLAUDE.md`](./CLAUDE.md), контекст
+подготовки — в [`hackathon-vibecoding-guide.md`](./hackathon-vibecoding-guide.md).
 
 ## Быстрый старт
 
@@ -38,22 +40,20 @@ http://localhost:8000/docs
 ```
 backend/app/
   main.py, db.py, config.py    заморожено — шов: include_router для обеих фич
-  models.py                    заморожено — все HR-сущности сразу
-  features/ranking/            router.py, schemas.py — заглушка, домен ranking
-  features/turnover/           router.py, schemas.py — заглушка, домен turnover
-backend/scripts/seed.py        заморожено — демоданные сразу во все таблицы
+  models.py                    заморожено — Department/ExitInterview/ExitAnalysis
+  features/interviews/         router.py, schemas.py — заглушка, домен Кости
+  features/analytics/          router.py, schemas.py — заглушка, домен Алисы
+backend/scripts/seed.py        заморожено — 5 отделов + 12 демо-транскриптов с анализом
 
 frontend/src/
   App.tsx, router.tsx          заморожено — оба маршрута заведены
   shared/ui/                   готовый набор компонентов (см. ниже)
-  shared/http.ts               заморожено — fetch + переключатель моков
-  features/ranking/            ui.tsx, api.ts, types.ts, mocks.ts — заглушка
-  features/turnover/           ui.tsx, api.ts, types.ts, mocks.ts — заглушка
+  shared/http.ts                заморожено — fetch + переключатель моков
+  features/interviews/         ui.tsx, api.ts, types.ts, mocks.ts — заглушка, домен Кости
+  features/analytics/          ui.tsx, api.ts, types.ts, mocks.ts — заглушка, домен Алисы
 ```
 
-`features/ranking` и `features/turnover` — placeholder-имена для двух будущих фич
-(конкретные домены хакатона ещё не известны); переименуйте папки под реальные фичи, когда
-задание станет известно, не трогая `main.py`/`router.tsx`/`models.py`.
+Разделение работы, сценарий демо и критерии готовности — в [`HACKATHON.md`](./HACKATHON.md).
 
 ## Готовые UI-компоненты (`frontend/src/shared/ui`)
 
@@ -64,7 +64,7 @@ Toast, LoadingState/EmptyState/ErrorState, Button, Badge. Живая витри�
 ## Известные ограничения шаблона
 
 - Без авторизации, миграций (Alembic) и CI — сознательно, см. `CLAUDE.md`.
-- Обе фичи — заглушки (`/api/ranking/ping`, `/api/turnover/ping`); реальную логику и экраны
-  реализуют участники хакатона каждый в своей папке.
+- Обе фичи — заглушки (`/api/interviews/ping`, `/api/analytics/ping`); реальную логику и
+  экраны реализуют Костя и Алиса каждый в своей папке (см. `HACKATHON.md`).
 - Frontend-фичи используют мок-fallback (`shared/http.ts::withMockFallback`), если backend
   недоступен — полезно при офлайн-полировке UI.

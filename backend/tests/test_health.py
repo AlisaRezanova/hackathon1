@@ -11,11 +11,11 @@ def test_health() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_ranking_stub() -> None:
-    response = client.get("/api/ranking/ping")
+def test_interviews_stub() -> None:
+    response = client.get("/api/interviews/ping")
     assert response.status_code == 200
 
 
-def test_turnover_stub() -> None:
-    response = client.get("/api/turnover/ping")
+def test_analytics_stub() -> None:
+    response = client.get("/api/analytics/ping")
     assert response.status_code == 200

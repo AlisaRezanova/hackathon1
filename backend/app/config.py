@@ -14,6 +14,11 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["http://localhost:5173"]
 
+    # Exit-interview LLM engine (features/interviews). Empty key => the
+    # feature runs on its heuristic fallback (see HACKATHON.md).
+    openrouter_api_key: str = ""
+    openrouter_model: str = "deepseek/deepseek-v4-flash-0731"
+
     @property
     def database_url(self) -> str:
         return (

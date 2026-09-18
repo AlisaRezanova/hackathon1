@@ -1,7 +1,10 @@
-"""Seed the database with synthetic HR demo data — FROZEN seam.
+"""Seed the database with synthetic exit-interview demo data — FROZEN seam.
 
-Fills every table in one place so both features read from the same demo
-data instead of from each other's output. No real personal data.
+Fills every table in one place: `Department`, `ExitInterview` (raw
+anonymized transcripts — the assignment's input dataset) and `ExitAnalysis`
+(pre-computed "problem passports" — so the `analytics` feature has full
+aggregate data to read immediately, without waiting on `interviews`' live
+LLM pipeline to run first).
 
 Idempotent: if departments already exist, does nothing (safe to re-run via
 `make seed`). To force a clean reseed, use `make reset-data`.
@@ -9,132 +12,421 @@ Idempotent: if departments already exist, does nothing (safe to re-run via
 Run inside the backend container: `python -m scripts.seed` (see Makefile).
 """
 
-import random
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
+from random import Random
 
 from app.db import Base, SessionLocal, engine
-from app.models import Candidate, CandidateStage, Department, Employee, EmployeeStatus
+from app.models import Department, ExitAnalysis, ExitInterview, ExitReason, RiskZone
 
-DEPARTMENTS = ["Engineering", "Sales", "Customer Support", "People", "Marketing"]
+DEPARTMENTS = ["Разработка", "Продажи", "Поддержка", "HR", "Маркетинг"]
 
-POSITIONS = {
-    "Engineering": ["Backend Engineer", "Frontend Engineer", "QA Engineer", "DevOps Engineer"],
-    "Sales": ["Account Executive", "Sales Development Rep", "Sales Manager"],
-    "Customer Support": ["Support Specialist", "Support Team Lead"],
-    "People": ["HR Business Partner", "Recruiter", "People Ops Analyst"],
-    "Marketing": ["Marketing Manager", "Content Specialist", "Growth Analyst"],
-}
-
-TERMINATION_REASONS = [
-    "Better offer elsewhere",
-    "Relocation",
-    "Career change",
-    "Compensation",
-    "Manager conflict",
-    "Burnout",
+INTERVIEWS: list[dict] = [
+    {
+        "department": "Разработка",
+        "position": "Backend-разработчик",
+        "transcript": (
+            "— Уходишь? — Да, перехожу к конкурентам. — Почему? — Знаешь, сама работа "
+            "классная, но убивает вот это: мы полгода обсуждаем ТЗ, а потом переделываем "
+            "за неделю. Процесс согласования — это ад. Каждое решение проходит через пять "
+            "человек, и пока согласуют, требования уже устарели. — А что было хорошо? — "
+            "Зато очень нравится, как устроен онбординг, ментор помогал реально, не то что "
+            "в других местах. Первые недели вообще не чувствовал себя брошенным. — Что "
+            "могло бы удержать? — Если бы согласования шли быстрее и команда сама могла "
+            "принимать часть решений — я бы, наверное, остался."
+        ),
+        "exit_reason": ExitReason.CAREER,
+        "risk_zone": RiskZone.MEDIUM,
+        "pain_points": [
+            {"label": "Долгое согласование ТЗ", "mentions": 3},
+            {"label": "Переделки после старта работ", "mentions": 2},
+        ],
+        "best_practices": [
+            {
+                "label": "Онбординг с ментором",
+                "quote": "ментор помогал реально, не то что в других местах",
+            }
+        ],
+        "improvement_suggestions": [
+            "Сократить цепочку согласования ТЗ до 1-2 ответственных",
+            "Фиксировать критерии приёмки до начала работы над задачей",
+            "Дать команде право принимать часть технических решений самостоятельно",
+        ],
+        "sentiment_arc": [0.2, -0.4, -0.6, 0.5, 0.1],
+    },
+    {
+        "department": "Разработка",
+        "position": "Frontend-разработчик",
+        "transcript": (
+            "— Расскажи, почему решил уйти? — Если честно — деньги. Мне предложили на 40% "
+            "больше на похожем стеке. — А в остальном как вам тут работалось? — В целом "
+            "неплохо, команда классная, но зарплату не пересматривали два года, хотя я "
+            "просил на каждом ревью. — А обратную связь получал? — Да, ревью были "
+            "регулярные, руководитель честно говорил, что я расту, но бюджет на повышение "
+            "не выделяли. — Что могло бы изменить решение? — Пересмотр зарплаты хотя бы "
+            "раз в год под рынок и прозрачная вилка для грейдов — тогда бы я даже не стал "
+            "смотреть предложения на стороне."
+        ),
+        "exit_reason": ExitReason.MONEY,
+        "risk_zone": RiskZone.MEDIUM,
+        "pain_points": [
+            {"label": "Нет ежегодного пересмотра зарплаты", "mentions": 3},
+            {"label": "Непрозрачные грейды", "mentions": 1},
+        ],
+        "best_practices": [
+            {
+                "label": "Регулярные и честные ревью",
+                "quote": "руководитель честно говорил, что я расту",
+            }
+        ],
+        "improvement_suggestions": [
+            "Ввести ежегодный пересмотр зарплаты по рынку",
+            "Опубликовать прозрачную вилку окладов по грейдам",
+            "Закладывать бюджет на удержание до получения оффера конкурентов",
+        ],
+        "sentiment_arc": [-0.2, -0.5, 0.3, 0.1, -0.3],
+    },
+    {
+        "department": "Разработка",
+        "position": "QA-инженер",
+        "transcript": (
+            "— Что стало решающим фактором? — Не деньги и не начальник, если честно. "
+            "Просто скучно. Полгода тестирую одну и ту же форму регистрации, а хотелось "
+            "автоматизацию, архитектуру тестов, что-то новое. — Пробовал обсудить это с "
+            "руководителем? — Пробовал, говорил, что хочу в автотесты, но сказали, что "
+            "сейчас не время, нужны руки на регрессе. — А что нравилось? — Коллектив "
+            "хороший, никто не подставляет, помогают, если что-то не получается. — Что "
+            "могло бы удержать? — Ротация задач хотя бы раз в квартал или обучение "
+            "автоматизации за счёт компании."
+        ),
+        "exit_reason": ExitReason.UNFULFILLMENT,
+        "risk_zone": RiskZone.LOW,
+        "pain_points": [
+            {"label": "Однообразные задачи без развития", "mentions": 3},
+            {"label": "Нет ротации и обучения", "mentions": 2},
+        ],
+        "best_practices": [
+            {
+                "label": "Поддерживающий коллектив",
+                "quote": "коллектив хороший, никто не подставляет",
+            }
+        ],
+        "improvement_suggestions": [
+            "Ввести ротацию задач между сотрудниками раз в квартал",
+            "Выделить бюджет на обучение автоматизации тестирования",
+            "Согласовывать индивидуальный план развития на ревью",
+        ],
+        "sentiment_arc": [-0.1, -0.3, -0.2, 0.4, 0.0],
+    },
+    {
+        "department": "Разработка",
+        "position": "DevOps-инженер",
+        "transcript": (
+            "— Почему уходишь, если не секрет? — Компания растёт, а позиции senior/lead "
+            "DevOps тут просто нет — либо я, либо ещё один инженер, а карьерного трека "
+            "дальше не видно. — А инструменты, процессы устраивали? — Более чем. Полная "
+            "автономия, современный стек, никто не мешает внедрять новое, я сам выбирал "
+            "мониторинг и CI. — То есть дело не в инструментах. — Нет, только в "
+            "перспективе роста. Хочется вести направление, а не просто исполнять. — Что "
+            "могло бы удержать? — Понятный трек до lead-роли или хотя бы горизонтальный "
+            "рост в архитектуру."
+        ),
+        "exit_reason": ExitReason.CAREER,
+        "risk_zone": RiskZone.LOW,
+        "pain_points": [{"label": "Нет карьерного трека выше текущей роли", "mentions": 2}],
+        "best_practices": [
+            {
+                "label": "Автономия и современный стек",
+                "quote": "полная автономия... я сам выбирал мониторинг и CI",
+            }
+        ],
+        "improvement_suggestions": [
+            "Описать карьерный трек до lead/архитектора для инженерных ролей",
+            "Предложить горизонтальный рост в смежные направления",
+            "Ежегодно пересматривать роли вместе с ростом компании",
+        ],
+        "sentiment_arc": [0.1, -0.2, 0.5, 0.3, -0.1],
+    },
+    {
+        "department": "Продажи",
+        "position": "Менеджер по продажам",
+        "transcript": (
+            "— Куда уходишь? — К конкурентам, на такую же должность. — Главная причина? "
+            "— Деньги и условия по бонусам. У нас план каждый квартал растёт, а процент с "
+            "продажи наоборот срезают. — А ещё что-то важное было? — Да если честно всё "
+            "упирается в деньги, тут прям накипело. — А поддержка от руководителя была? — "
+            "Формально да, но по сути только требует цифры, обратной связи по развитию "
+            "нет вообще. — Что могло бы удержать? — Зафиксировать процент хотя бы на год "
+            "вперёд и не менять план в середине квартала."
+        ),
+        "exit_reason": ExitReason.MONEY,
+        "risk_zone": RiskZone.HIGH,
+        "pain_points": [
+            {"label": "Снижение бонусного процента", "mentions": 3},
+            {"label": "План меняется в середине периода", "mentions": 2},
+            {"label": "Нет обратной связи по развитию", "mentions": 1},
+        ],
+        "best_practices": [],
+        "improvement_suggestions": [
+            "Зафиксировать бонусный процент минимум на год",
+            "Не менять план продаж в середине квартала",
+            "Ввести регулярные встречи о развитии, а не только о цифрах",
+        ],
+        "sentiment_arc": [-0.3, -0.6, -0.7, -0.5, -0.6],
+    },
+    {
+        "department": "Продажи",
+        "position": "Sales Development Rep",
+        "transcript": (
+            "— Почему решил уйти? — Я тут почти два года SDR, хотел вырасти в Account "
+            "Executive, но позиции не освобождаются, а новых AE берут снаружи. — А "
+            "заработок устраивал? — В целом да, не жалуюсь. — А атмосфера в команде? — "
+            "Атмосфера классная, руководитель поддерживает, помогает с звонками, честно "
+            "говорит, где я слабый. — Тогда почему уходишь, если всё неплохо? — Просто "
+            "нет пути наверх здесь, а в другом месте сразу берут на AE. — Что могло бы "
+            "изменить решение? — Понятные критерии перехода SDR → AE и хотя бы один слот "
+            "в квартал."
+        ),
+        "exit_reason": ExitReason.CAREER,
+        "risk_zone": RiskZone.MEDIUM,
+        "pain_points": [
+            {"label": "Нет прозрачного перехода SDR → AE", "mentions": 3},
+            {"label": "AE-позиции закрываются извне", "mentions": 2},
+        ],
+        "best_practices": [
+            {
+                "label": "Поддерживающий руководитель",
+                "quote": "руководитель поддерживает, помогает с звонками, честно говорит, "
+                "где я слабый",
+            }
+        ],
+        "improvement_suggestions": [
+            "Ввести прозрачные критерии перехода SDR в AE",
+            "Резервировать часть AE-вакансий под внутренний рост",
+            "Публиковать карьерный трек для sales-ролей",
+        ],
+        "sentiment_arc": [0.2, 0.1, -0.4, -0.5, -0.2],
+    },
+    {
+        "department": "Продажи",
+        "position": "Account Executive",
+        "transcript": (
+            "— Расскажи, что стало последней каплей? — Руководитель. Постоянно "
+            "переделывает мои сделки по-своему, а потом говорит, что я не умею продавать. "
+            "— Это происходит часто? — Почти на каждой крупной сделке. Причём заранее не "
+            "говорит, чего ждёт, а после — только критика. — А с коллегами как? — С "
+            "командой отлично, помогаем друг другу, есть ощущение плеча. — А деньги, "
+            "нагрузка? — Тут нормально, не жалуюсь. — Что могло бы удержать? — Смена "
+            "руководителя или хотя бы договориться заранее о критериях по сделке, а не "
+            "постфактум."
+        ),
+        "exit_reason": ExitReason.CLIMATE,
+        "risk_zone": RiskZone.HIGH,
+        "pain_points": [
+            {"label": "Микроменеджмент и переделки решений руководителем", "mentions": 4},
+            {"label": "Критерии успеха не фиксируются заранее", "mentions": 2},
+        ],
+        "best_practices": [
+            {
+                "label": "Сильная поддержка команды",
+                "quote": "с командой отлично, помогаем друг другу",
+            }
+        ],
+        "improvement_suggestions": [
+            "Фиксировать ожидания и критерии по сделке до начала работы",
+            "Обучить руководителей давать обратную связь без постфактум-критики",
+            "Предусмотреть механизм смены менеджера внутри отдела",
+        ],
+        "sentiment_arc": [0.0, -0.5, -0.7, 0.3, -0.4],
+    },
+    {
+        "department": "Поддержка",
+        "position": "Специалист поддержки",
+        "transcript": (
+            "— Почему уходишь из поддержки? — Выгорел, если честно. Нагрузка выросла в "
+            "два раза, а людей не добавили. — А тебе кто-то помогал с этим справляться? — "
+            "Не особо, руководитель обычно на связи только когда что-то горит, а как дела "
+            "в целом — не спрашивает. — Были моменты, когда было хорошо? — Да, когда "
+            "только пришёл — было классное вводное обучение, всё разложили по полочкам. — "
+            "Что могло бы удержать? — Либо больше людей в команду, либо честно признать, "
+            "что нагрузка выше нормы, и пересмотреть KPI."
+        ),
+        "exit_reason": ExitReason.CLIMATE,
+        "risk_zone": RiskZone.HIGH,
+        "pain_points": [
+            {"label": "Хроническая перегрузка без роста штата", "mentions": 3},
+            {"label": "Руководитель на связи только в авралах", "mentions": 2},
+        ],
+        "best_practices": [
+            {
+                "label": "Качественное вводное обучение",
+                "quote": "было классное вводное обучение, всё разложили по полочкам",
+            }
+        ],
+        "improvement_suggestions": [
+            "Пересмотреть KPI по нагрузке на одного специалиста",
+            "Расширить команду поддержки или перераспределить нагрузку",
+            "Ввести регулярные 1:1 вне авральных ситуаций",
+        ],
+        "sentiment_arc": [-0.2, -0.6, -0.8, 0.4, -0.5],
+    },
+    {
+        "department": "Поддержка",
+        "position": "Тимлид поддержки",
+        "transcript": (
+            "— Что было решающим? — Я тимлид уже три года, но по факту всё ещё разбираю "
+            "тикеты наравне со всеми, управленческих задач почти нет. — А хотелось именно "
+            "менеджмента? — Да, хотелось строить процессы, а не только тушить пожары. — "
+            "Команда как относится? — Отлично, меня уважают, прислушиваются. — Компания "
+            "вообще шла навстречу? — Обещали пересмотреть роль, но за год ничего не "
+            "поменялось. — Что могло бы удержать? — Реальные управленческие полномочия и "
+            "бюджет на изменения в процессах."
+        ),
+        "exit_reason": ExitReason.UNFULFILLMENT,
+        "risk_zone": RiskZone.MEDIUM,
+        "pain_points": [
+            {"label": "Роль тимлида без управленческих полномочий", "mentions": 3},
+            {"label": "Обещания без изменений в течение года", "mentions": 2},
+        ],
+        "best_practices": [
+            {"label": "Авторитет и доверие команды", "quote": "меня уважают, прислушиваются"}
+        ],
+        "improvement_suggestions": [
+            "Пересматривать зону ответственности тимлидов раз в полугодие",
+            "Выделять бюджет и время на изменение процессов поддержки",
+            "Фиксировать сроки по обещанным изменениям роли",
+        ],
+        "sentiment_arc": [-0.1, -0.3, 0.2, -0.4, -0.2],
+    },
+    {
+        "department": "HR",
+        "position": "HR-бизнес-партнёр",
+        "transcript": (
+            "— Почему решили уйти? — Меня позвали на позицию HRD в другую компанию, это "
+            "следующий шаг, которого здесь пока нет. — То есть дело не в условиях здесь? "
+            "— Нет, тут мне нравилось, руководство прислушивается к HR, у нас реально "
+            "внедряли то, что мы предлагали. — А зарплата, нагрузка? — Всё было в "
+            "порядке, грех жаловаться. — Что могло бы удержать? — Если бы здесь появилась "
+            "позиция HRD или замдиректора по персоналу, я бы, наверное, осталась."
+        ),
+        "exit_reason": ExitReason.CAREER,
+        "risk_zone": RiskZone.LOW,
+        "pain_points": [{"label": "Нет управленческой HR-позиции для роста", "mentions": 1}],
+        "best_practices": [
+            {
+                "label": "HR реально влияет на решения",
+                "quote": "у нас реально внедряли то, что мы предлагали",
+            }
+        ],
+        "improvement_suggestions": [
+            "Создать управленческий трек внутри HR-функции",
+            "Заранее обсуждать карьерные ожидания ключевых сотрудников",
+            "Рассматривать внутренних кандидатов на новые руководящие позиции",
+        ],
+        "sentiment_arc": [0.3, 0.4, 0.2, 0.1, 0.3],
+    },
+    {
+        "department": "Маркетинг",
+        "position": "Контент-специалист",
+        "transcript": (
+            "— Куда переходишь? — В агентство, на фрилансе будет выходить почти в "
+            "полтора раза больше. — А тут что не устраивало по деньгам? — Ставка не "
+            "менялась полтора года, хотя объём задач вырос — начал вести ещё и соцсети. "
+            "— А задачи интересные были? — Да, тексты интересные, руководитель "
+            "адекватный, не душнит с правками. — Что могло бы удержать? — Пересмотр "
+            "ставки под новый объём обязанностей, а не просто «спасибо, ты молодец»."
+        ),
+        "exit_reason": ExitReason.MONEY,
+        "risk_zone": RiskZone.MEDIUM,
+        "pain_points": [
+            {"label": "Ставка не пересматривалась при росте объёма задач", "mentions": 2}
+        ],
+        "best_practices": [
+            {
+                "label": "Адекватная обратная связь по текстам",
+                "quote": "руководитель адекватный, не душнит с правками",
+            }
+        ],
+        "improvement_suggestions": [
+            "Пересматривать оклад при расширении зоны ответственности",
+            "Формализовать переход между зонами обязанностей отдельной ставкой",
+            "Сравнивать вилки с рынком фриланса для контентных ролей",
+        ],
+        "sentiment_arc": [0.1, -0.3, 0.4, 0.2, -0.2],
+    },
+    {
+        "department": "Маркетинг",
+        "position": "Growth-аналитик",
+        "transcript": (
+            "— Что стало причиной ухода? — Постоянные смены приоритетов. В понедельник "
+            "говорят делать одно, в среду — уже совсем другое, а к пятнице спрашивают, "
+            "почему не готово первое. — Это от кого исходит? — От руководителя "
+            "маркетинга, он часто меняет решения после встреч с топ-менеджментом, но нам "
+            "об этом не рассказывает. — А аналитика, инструменты — окей? — Да, с этим "
+            "всё хорошо, современные дашборды, никто не ограничивает в инструментах. — "
+            "Что могло бы удержать? — Стабильный список приоритетов хотя бы на две "
+            "недели вперёд и прозрачность, почему приоритеты вообще меняются."
+        ),
+        "exit_reason": ExitReason.CLIMATE,
+        "risk_zone": RiskZone.MEDIUM,
+        "pain_points": [{"label": "Частая смена приоритетов без объяснений", "mentions": 4}],
+        "best_practices": [
+            {
+                "label": "Свобода в выборе аналитических инструментов",
+                "quote": "современные дашборды, никто не ограничивает в инструментах",
+            }
+        ],
+        "improvement_suggestions": [
+            "Фиксировать приоритеты минимум на двухнедельный спринт",
+            "Прозрачно объяснять команде причины смены приоритетов",
+            "Ввести единую точку принятия решений по приоритетам в отделе",
+        ],
+        "sentiment_arc": [-0.1, -0.4, -0.3, 0.3, -0.2],
+    },
 ]
-
-FIRST_NAMES = [
-    "Anna",
-    "Boris",
-    "Elena",
-    "Igor",
-    "Maria",
-    "Nikolai",
-    "Olga",
-    "Pavel",
-    "Svetlana",
-    "Viktor",
-    "Yulia",
-    "Dmitri",
-    "Ksenia",
-    "Sergei",
-    "Tatiana",
-]
-LAST_NAMES = [
-    "Ivanova",
-    "Petrov",
-    "Smirnova",
-    "Kuznetsov",
-    "Sokolova",
-    "Popov",
-    "Volkova",
-    "Fedorov",
-    "Morozova",
-    "Novikov",
-]
-
-
-def _random_name(rng: random.Random) -> str:
-    return f"{rng.choice(FIRST_NAMES)} {rng.choice(LAST_NAMES)}"
 
 
 def seed() -> None:
     Base.metadata.create_all(bind=engine)
 
-    rng = random.Random(42)
+    rng = Random(42)
     session = SessionLocal()
     try:
         if session.query(Department).first() is not None:
             print("Seed skipped: data already present.")
             return
 
-        departments = [Department(name=name) for name in DEPARTMENTS]
-        session.add_all(departments)
+        departments = {name: Department(name=name) for name in DEPARTMENTS}
+        session.add_all(departments.values())
         session.flush()
 
         today = date.today()
 
-        for dept in departments:
-            positions = POSITIONS[dept.name]
-            employee_count = rng.randint(4, 7)
-            for _ in range(employee_count):
-                hire_date = today - timedelta(days=rng.randint(60, 1500))
-                is_terminated = rng.random() < 0.25
-                termination_date = None
-                termination_reason = None
-                status = EmployeeStatus.ACTIVE
-                if is_terminated:
-                    status = EmployeeStatus.TERMINATED
-                    termination_date = hire_date + timedelta(days=rng.randint(90, 900))
-                    termination_reason = rng.choice(TERMINATION_REASONS)
+        for idx, item in enumerate(INTERVIEWS, start=1):
+            interview = ExitInterview(
+                employee_alias=f"Сотрудник #{idx}",
+                position=item["position"],
+                department_id=departments[item["department"]].id,
+                interview_date=today - timedelta(days=rng.randint(5, 90)),
+                transcript=item["transcript"],
+            )
+            session.add(interview)
+            session.flush()
 
-                session.add(
-                    Employee(
-                        full_name=_random_name(rng),
-                        position=rng.choice(positions),
-                        department_id=dept.id,
-                        hire_date=hire_date,
-                        status=status,
-                        termination_date=termination_date,
-                        termination_reason=termination_reason,
-                        performance_score=round(rng.uniform(2.5, 5.0), 1),
-                        engagement_score=round(rng.uniform(2.0, 5.0), 1),
-                    )
+            session.add(
+                ExitAnalysis(
+                    interview_id=interview.id,
+                    exit_reason=item["exit_reason"],
+                    risk_zone=item["risk_zone"],
+                    pain_points=item["pain_points"],
+                    best_practices=item["best_practices"],
+                    improvement_suggestions=item["improvement_suggestions"],
+                    sentiment_arc=item["sentiment_arc"],
+                    generated_by="heuristic",
                 )
-
-            candidate_count = rng.randint(3, 6)
-            for _ in range(candidate_count):
-                applied_at = datetime.now() - timedelta(days=rng.randint(1, 60))
-                stage = rng.choice(list(CandidateStage))
-                session.add(
-                    Candidate(
-                        full_name=_random_name(rng),
-                        position=rng.choice(positions),
-                        department_id=dept.id,
-                        applied_at=applied_at,
-                        stage=stage,
-                        score=round(rng.uniform(50, 99), 1),
-                        years_experience=round(rng.uniform(0.5, 12), 1),
-                        resume_summary=(
-                            f"{rng.randint(1, 12)} years in {dept.name.lower()}-adjacent roles, "
-                            f"strong communication and delivery track record."
-                        ),
-                    )
-                )
+            )
 
         session.commit()
-        print("Seed complete.")
+        print(f"Seed complete: {len(departments)} departments, {len(INTERVIEWS)} interviews.")
     finally:
         session.close()
 
