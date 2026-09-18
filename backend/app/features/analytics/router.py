@@ -25,6 +25,12 @@ from app.models import Department, ExitAnalysis, ExitInterview
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
+# Keyed by (category, total row count) so a new interview naturally busts
+# the cache. In-process only — fine for a single-instance demo backend, and
+# it's what makes repeat clicks on the same category instant despite the
+# live LLM call.
+_drilldown_cache: dict[tuple[str, int], CategoryDrilldown] = {}
+
 
 def _analysis_rows(db: Session):
     return db.execute(
@@ -79,6 +85,10 @@ def summary(db: Session = Depends(get_db)) -> AnalyticsSummary:
 def category_drilldown(category: str, db: Session = Depends(get_db)) -> CategoryDrilldown:
     rows = _analysis_rows(db)
 
+    cache_key = (category, len(rows))
+    if cache_key in _drilldown_cache:
+        return _drilldown_cache[cache_key]
+
     subtype_counts: Counter[str] = Counter()
     quotes: list[CategoryQuote] = []
     suggestions: list[str] = []
@@ -117,7 +127,7 @@ def category_drilldown(category: str, db: Session = Depends(get_db)) -> Category
     if suggestions:
         heuristic_summary += f" Частое предложение по улучшению: «{suggestions[0]}»."
 
-    llm_summary = summarize_cluster(
+    insight = summarize_cluster(
         category=category,
         subtypes=[s.subtype for s in subtypes],
         quotes=[q.quote for q in quotes],
@@ -125,12 +135,21 @@ def category_drilldown(category: str, db: Session = Depends(get_db)) -> Category
         interview_count=len(interview_ids),
     )
 
-    return CategoryDrilldown(
+    quotes_by_text = {q.quote: q for q in quotes}
+    top_quotes = (
+        [quotes_by_text[t] for t in insight.top_quotes if t in quotes_by_text] if insight else []
+    )
+    if not top_quotes:
+        top_quotes = quotes[:3]
+
+    result = CategoryDrilldown(
         category=category,
         total_mentions=total_mentions,
         interview_count=len(interview_ids),
         subtypes=subtypes,
-        quotes=quotes[:12],
-        summary=llm_summary or heuristic_summary,
-        generated_by="llm" if llm_summary else "heuristic",
+        quotes=top_quotes,
+        summary=insight.summary if insight else heuristic_summary,
+        generated_by="llm" if insight else "heuristic",
     )
+    _drilldown_cache[cache_key] = result
+    return result
