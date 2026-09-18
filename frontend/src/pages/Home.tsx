@@ -79,10 +79,10 @@ export function Home() {
         title="Обзор"
         actions={
           <>
-            <Link to="/interviews">
+            <Link to="/app/interviews">
               <Button variant="secondary">Начать exit-интервью</Button>
             </Link>
-            <Link to="/analytics">
+            <Link to="/app/analytics">
               <Button>Открыть аналитику</Button>
             </Link>
           </>
@@ -113,7 +113,7 @@ export function Home() {
             <Card
               title="Последние exit-интервью"
               actions={
-                <Link to="/analytics">
+                <Link to="/app/analytics">
                   <Button variant="ghost">Все интервью →</Button>
                 </Link>
               }
