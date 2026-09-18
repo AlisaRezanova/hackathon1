@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.features.analytics.llm import summarize_cluster
 from app.features.analytics.schemas import (
     AnalyticsSummary,
     CategoryDrilldown,
@@ -109,12 +110,20 @@ def category_drilldown(category: str, db: Session = Depends(get_db)) -> Category
     top_subtypes = ", ".join(s.subtype for s in subtypes[:3])
     total_mentions = sum(subtype_counts.values())
 
-    summary_text = (
+    heuristic_summary = (
         f"«{category}» встречается в {len(interview_ids)} из {len(rows)} интервью "
         f"({total_mentions} упоминаний). Основные подтипы: {top_subtypes}."
     )
     if suggestions:
-        summary_text += f" Частое предложение по улучшению: «{suggestions[0]}»."
+        heuristic_summary += f" Частое предложение по улучшению: «{suggestions[0]}»."
+
+    llm_summary = summarize_cluster(
+        category=category,
+        subtypes=[s.subtype for s in subtypes],
+        quotes=[q.quote for q in quotes],
+        total_mentions=total_mentions,
+        interview_count=len(interview_ids),
+    )
 
     return CategoryDrilldown(
         category=category,
@@ -122,5 +131,6 @@ def category_drilldown(category: str, db: Session = Depends(get_db)) -> Category
         interview_count=len(interview_ids),
         subtypes=subtypes,
         quotes=quotes[:12],
-        summary=summary_text,
+        summary=llm_summary or heuristic_summary,
+        generated_by="llm" if llm_summary else "heuristic",
     )

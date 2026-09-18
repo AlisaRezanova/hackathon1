@@ -39,4 +39,5 @@ export interface CategoryDrilldown {
   subtypes: SubtypeCount[]
   quotes: CategoryQuote[]
   summary: string
+  generated_by: 'llm' | 'heuristic'
 }

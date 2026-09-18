@@ -183,6 +183,14 @@ export function AnalyticsPage() {
             <LoadingState label="Загружаем разбор категории…" />
           ) : (
             <>
+              <div className="analytics-summary-head">
+                <span className="analytics-section-title" style={{ margin: 0 }}>
+                  AI-саммари кластера
+                </span>
+                <Badge tone={drilldown.generated_by === 'llm' ? 'default' : 'neutral'}>
+                  {drilldown.generated_by === 'llm' ? 'LLM' : 'эвристика'}
+                </Badge>
+              </div>
               <p className="analytics-drawer-summary">{drilldown.summary}</p>
 
               <h3 className="analytics-section-title">Подтипы</h3>

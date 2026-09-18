@@ -62,6 +62,13 @@
   transition: background 0.15s ease;
 }
 
+.analytics-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
 .analytics-drawer-summary {
   background: var(--paper);
   border: 1px solid var(--line);

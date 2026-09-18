@@ -47,3 +47,4 @@ class CategoryDrilldown(BaseModel):
     subtypes: list[SubtypeCount]
     quotes: list[CategoryQuote]
     summary: str
+    generated_by: str  # "llm" | "heuristic"
