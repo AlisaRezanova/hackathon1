@@ -15,19 +15,19 @@ function renderHome() {
 }
 
 describe('Home', () => {
-  it('renders the product entry point', () => {
+  it('renders the product entry point', async () => {
     renderHome()
     expect(screen.getByRole('heading', { name: 'Обзор exit-интервью' })).toBeInTheDocument()
-    expect(screen.getByText('Основные причины ухода')).toBeInTheDocument()
+    expect(await screen.findByText('Основные причины ухода')).toBeInTheDocument()
   })
 
-  it('links to both primary product scenarios', () => {
+  it('links to both primary product scenarios', async () => {
     renderHome()
     expect(screen.getAllByRole('link', { name: /Новое интервью/i })[0]).toHaveAttribute(
       'href',
       '/app/interviews',
     )
-    expect(screen.getAllByRole('link', { name: /Открыть аналитику/i })[0]).toHaveAttribute(
+    expect((await screen.findAllByRole('link', { name: /Открыть аналитику/i }))[0]).toHaveAttribute(
       'href',
       '/app/analytics',
     )
