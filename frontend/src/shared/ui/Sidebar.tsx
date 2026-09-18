@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom'
 
 const links = [
-  { to: '/', label: 'Обзор', end: true },
-  { to: '/interviews', label: 'Exit-интервью' },
-  { to: '/analytics', label: 'Аналитика по компании' },
+  { to: '/app', label: 'Обзор', end: true },
+  { to: '/app/interviews', label: 'Exit-интервью' },
+  { to: '/app/analytics', label: 'Аналитика по компании' },
 ]
 
 export function Sidebar({ apiOnline }: { apiOnline: boolean }) {

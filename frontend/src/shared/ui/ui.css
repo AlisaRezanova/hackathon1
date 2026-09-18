@@ -8,6 +8,13 @@
   min-height: 100vh;
 }
 
+/* No sidebar column — used by EmployeeShell (/interview/:token). */
+.ui-shell--solo {
+  grid-template-columns: 1fr;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
 @media (max-width: 860px) {
   .ui-shell {
     grid-template-columns: 1fr;

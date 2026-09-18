@@ -66,9 +66,13 @@ interface AnsweredTurn extends ChatTurn {
 /**
  * Main screen: an AI-driven exit-interview chat that ends in a "problem
  * passport" (see HACKATHON.md). A quick "paste transcript" path and a
- * history drawer of past interviews (seed + chat) are offered alongside.
+ * history drawer of past interviews (seed + chat) are offered alongside —
+ * but only for HR (`/app/interviews`). When opened as `/interview/:token`
+ * (`employeeMode`), those are hidden: the link goes to one employee, so it
+ * must not expose the company-wide interview history or a link into the
+ * analytics dashboard. See router.tsx.
  */
-export function InterviewsPage() {
+export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolean } = {}) {
   const toast = useToast()
   const [phase, setPhase] = useState<Phase>('chat')
   const [turns, setTurns] = useState<AnsweredTurn[]>([])
@@ -188,10 +192,10 @@ export function InterviewsPage() {
   return (
     <>
       <Header
-        eyebrow="Фича: interviews"
+        eyebrow={employeeMode ? undefined : 'Фича: interviews'}
         title="Exit-интервью → паспорт проблемы"
         actions={
-          phase === 'chat' ? (
+          employeeMode ? undefined : phase === 'chat' ? (
             <>
               <Button variant="secondary" onClick={() => setHistoryOpen(true)}>
                 История интервью
@@ -305,15 +309,16 @@ export function InterviewsPage() {
               transcript={result.transcript}
               passport={result.passport}
               onReset={startChat}
+              showDashboardLink={!employeeMode}
             />
           </Card>
         )}
       </div>
 
-      {pasteOpen && (
+      {!employeeMode && pasteOpen && (
         <PasteTranscriptModal onClose={() => setPasteOpen(false)} onSubmit={handlePasteSubmit} />
       )}
-      {historyOpen && <HistoryDrawer onClose={() => setHistoryOpen(false)} />}
+      {!employeeMode && historyOpen && <HistoryDrawer onClose={() => setHistoryOpen(false)} />}
     </>
   )
 }
@@ -340,10 +345,12 @@ function PassportCard({
   transcript,
   passport,
   onReset,
+  showDashboardLink = true,
 }: {
   transcript: string
   passport: Passport
   onReset: () => void
+  showDashboardLink?: boolean
 }) {
   const [showTranscript, setShowTranscript] = useState(false)
   const grouped = new Map<string, Passport['categories']>()
@@ -420,9 +427,11 @@ function PassportCard({
         <Button variant="secondary" onClick={() => setShowTranscript((v) => !v)}>
           {showTranscript ? 'Скрыть транскрипт' : 'Показать транскрипт'}
         </Button>
-        <Link to="/analytics" style={{ textDecoration: 'none' }}>
-          <Button variant="ghost">Смотреть на дашборде →</Button>
-        </Link>
+        {showDashboardLink && (
+          <Link to="/app/analytics" style={{ textDecoration: 'none' }}>
+            <Button variant="ghost">Смотреть на дашборде →</Button>
+          </Link>
+        )}
       </div>
 
       {showTranscript && (
