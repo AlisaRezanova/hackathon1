@@ -1,215 +1,135 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { fetchAnalyticsSummary, fetchInterviews } from '../features/analytics/api'
+import type { AnalyticsSummary, InterviewListItem } from '../features/analytics/types'
 import { Badge } from '../shared/ui/Badge'
 import { Button } from '../shared/ui/Button'
 import { Card, StatCard, StatGrid } from '../shared/ui/Card'
-import { Drawer } from '../shared/ui/Drawer'
-import { Field, Input, Select } from '../shared/ui/Form'
 import { Header } from '../shared/ui/Header'
-import { Modal } from '../shared/ui/Modal'
 import { type Column, DataTable } from '../shared/ui/Table'
 import { EmptyState, ErrorState, LoadingState } from '../shared/ui/States'
 import { useToast } from '../shared/ui/toastContext'
 
-interface RosterRow {
-  id: number
-  name: string
-  position: string
-  department: string
-  status: 'active' | 'at_risk' | 'open'
+const RISK_LABEL: Record<InterviewListItem['risk_zone'], string> = {
+  low: 'Низкий',
+  medium: 'Средний',
+  high: 'Высокий',
+}
+const RISK_TONE: Record<InterviewListItem['risk_zone'], 'neutral' | 'amber' | 'danger'> = {
+  low: 'neutral',
+  medium: 'amber',
+  high: 'danger',
 }
 
-const roster: RosterRow[] = [
-  {
-    id: 1,
-    name: 'Anna Ivanova',
-    position: 'Backend Engineer',
-    department: 'Engineering',
-    status: 'active',
-  },
-  {
-    id: 2,
-    name: 'Boris Petrov',
-    position: 'Sales Manager',
-    department: 'Sales',
-    status: 'at_risk',
-  },
-  { id: 3, name: 'Elena Sokolova', position: 'Recruiter', department: 'People', status: 'active' },
-  {
-    id: 4,
-    name: 'Igor Volkov',
-    position: 'Support Specialist',
-    department: 'Customer Support',
-    status: 'open',
-  },
-  {
-    id: 5,
-    name: 'Maria Novikova',
-    position: 'Growth Analyst',
-    department: 'Marketing',
-    status: 'active',
-  },
-]
-
-const statusLabel: Record<
-  RosterRow['status'],
-  { label: string; tone: 'default' | 'amber' | 'neutral' }
-> = {
-  active: { label: 'Работает', tone: 'default' },
-  at_risk: { label: 'Риск ухода', tone: 'amber' },
-  open: { label: 'Вакансия', tone: 'neutral' },
-}
-
-const columns: Column<RosterRow>[] = [
-  { key: 'name', header: 'Сотрудник', render: (row) => row.name },
-  { key: 'position', header: 'Роль', render: (row) => row.position },
+const columns: Column<InterviewListItem>[] = [
+  { key: 'employee_alias', header: 'Сотрудник', render: (row) => row.employee_alias },
+  { key: 'position', header: 'Должность', render: (row) => row.position },
   { key: 'department', header: 'Отдел', render: (row) => row.department },
+  { key: 'primary_category', header: 'Причина ухода', render: (row) => row.primary_category },
   {
-    key: 'status',
-    header: 'Статус',
-    render: (row) => {
-      const meta = statusLabel[row.status]
-      return <Badge tone={meta.tone}>{meta.label}</Badge>
-    },
+    key: 'risk_zone',
+    header: 'Риск',
+    render: (row) => <Badge tone={RISK_TONE[row.risk_zone]}>{RISK_LABEL[row.risk_zone]}</Badge>,
   },
+  { key: 'interview_date', header: 'Дата', render: (row) => row.interview_date },
 ]
 
-type StatePreview = 'loading' | 'empty' | 'error' | null
+type LoadState = 'loading' | 'ready' | 'error'
 
 /**
- * Landing screen for the template — a working showcase of every shared
- * component (cards, table, form, modal, drawer, toast, loading/empty/error
- * states) wired to real interactions, not a specific product scenario.
- * The integrator replaces this with the real primary scenario.
+ * Landing screen: an aggregated view over the two real features (exit
+ * interviews + analytics), not a synthetic demo — see fetchAnalyticsSummary
+ * and fetchInterviews for the backing data.
  */
 export function Home() {
-  const [isFormOpen, setFormOpen] = useState(false)
-  const [selectedRow, setSelectedRow] = useState<RosterRow | null>(null)
-  const [preview, setPreview] = useState<StatePreview>(null)
   const toast = useToast()
+  const [state, setState] = useState<LoadState>('loading')
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
+  const [interviews, setInterviews] = useState<InterviewListItem[]>([])
 
-  function handleSave(e: FormEvent) {
-    e.preventDefault()
-    setFormOpen(false)
-    toast.show('Изменения сохранены', 'success')
-  }
+  useEffect(() => {
+    Promise.all([fetchAnalyticsSummary(), fetchInterviews()])
+      .then(([summaryRes, interviewsRes]) => {
+        setSummary(summaryRes.data)
+        setInterviews(interviewsRes.data)
+        setState('ready')
+        if (summaryRes.usedMock || interviewsRes.usedMock) {
+          toast.show('Backend недоступен — показаны демоданные', 'default')
+        }
+      })
+      .catch(() => setState('error'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const topCategory = summary?.category_breakdown
+    ? [...summary.category_breakdown].sort((a, b) => b.count - a.count)[0]
+    : undefined
+  const riskiestDept = summary?.department_risk
+    ? [...summary.department_risk].sort((a, b) => b.high_percent - a.high_percent)[0]
+    : undefined
+  const deptsAtRisk = summary?.department_risk.filter((d) => d.high_percent > 0).length ?? 0
+  const recentInterviews = [...interviews]
+    .sort((a, b) => (a.interview_date < b.interview_date ? 1 : -1))
+    .slice(0, 5)
 
   return (
     <>
       <Header
-        eyebrow="Шаблон хакатона"
+        eyebrow="Ledger · HR-прототип"
         title="Обзор"
         actions={
           <>
-            <Button variant="secondary" onClick={() => setFormOpen(true)}>
-              Добавить запись
-            </Button>
-            <Button onClick={() => toast.show('Демо-уведомление отправлено', 'success')}>
-              Показать уведомление
-            </Button>
+            <Link to="/interviews">
+              <Button variant="secondary">Начать exit-интервью</Button>
+            </Link>
+            <Link to="/analytics">
+              <Button>Открыть аналитику</Button>
+            </Link>
           </>
         }
       />
       <div className="ui-content">
-        <StatGrid>
-          <StatCard label="Всего сотрудников" value="128" delta="+4 за месяц" />
-          <StatCard label="Открытые вакансии" value="9" />
-          <StatCard label="Текучесть, 90 дней" value="6.2%" delta="−1.1 п.п." />
-          <StatCard label="Кандидатов в воронке" value="23" delta="+7 за неделю" />
-        </StatGrid>
+        {state === 'loading' && <LoadingState />}
+        {state === 'error' && <ErrorState body="Не удалось загрузить данные обзора." />}
+        {state === 'ready' && summary && (
+          <>
+            <StatGrid>
+              <StatCard label="Всего exit-интервью" value={String(summary.total_interviews)} />
+              <StatCard
+                label="Частая причина ухода"
+                value={topCategory ? topCategory.category : '—'}
+                delta={topCategory ? `${topCategory.percent}% интервью` : undefined}
+              />
+              <StatCard
+                label="Самый рискованный отдел"
+                value={riskiestDept ? riskiestDept.department : '—'}
+                delta={riskiestDept ? `${riskiestDept.high_percent}% высокий риск` : undefined}
+              />
+              <StatCard label="Отделов в зоне риска" value={String(deptsAtRisk)} />
+            </StatGrid>
 
-        <div style={{ height: 20 }} />
+            <div style={{ height: 20 }} />
 
-        <Card
-          title="Ростер (демоданные)"
-          actions={
-            <Button variant="ghost" onClick={() => setSelectedRow(roster[0])}>
-              Открыть карточку
-            </Button>
-          }
-        >
-          <DataTable columns={columns} rows={roster} />
-        </Card>
-
-        <div style={{ height: 20 }} />
-
-        <Card title="Состояния экрана">
-          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-            <Button variant="secondary" onClick={() => setPreview('loading')}>
-              Loading
-            </Button>
-            <Button variant="secondary" onClick={() => setPreview('empty')}>
-              Empty
-            </Button>
-            <Button variant="secondary" onClick={() => setPreview('error')}>
-              Error
-            </Button>
-            <Button variant="ghost" onClick={() => setPreview(null)}>
-              Скрыть
-            </Button>
-          </div>
-          {preview === 'loading' && <LoadingState />}
-          {preview === 'empty' && (
-            <EmptyState
-              title="Пока ничего нет"
-              body="Здесь появятся данные фичи после интеграции."
-            />
-          )}
-          {preview === 'error' && (
-            <ErrorState
-              body="Backend не ответил. Проверьте `make back-up`."
-              action={
-                <Button variant="secondary" onClick={() => setPreview(null)}>
-                  Повторить
-                </Button>
+            <Card
+              title="Последние exit-интервью"
+              actions={
+                <Link to="/analytics">
+                  <Button variant="ghost">Все интервью →</Button>
+                </Link>
               }
-            />
-          )}
-        </Card>
+            >
+              {recentInterviews.length === 0 ? (
+                <EmptyState
+                  title="Пока нет интервью"
+                  body="Проведите первое exit-интервью, чтобы увидеть данные здесь."
+                />
+              ) : (
+                <DataTable columns={columns} rows={recentInterviews} />
+              )}
+            </Card>
+          </>
+        )}
       </div>
-
-      {isFormOpen && (
-        <Modal
-          title="Новая запись"
-          onClose={() => setFormOpen(false)}
-          footer={
-            <>
-              <Button variant="secondary" onClick={() => setFormOpen(false)}>
-                Отмена
-              </Button>
-              <Button type="submit" form="demo-form">
-                Сохранить
-              </Button>
-            </>
-          }
-        >
-          <form id="demo-form" onSubmit={handleSave}>
-            <Field label="Имя" htmlFor="demo-name">
-              <Input id="demo-name" name="name" placeholder="Например, Ольга Смирнова" required />
-            </Field>
-            <Field label="Отдел" htmlFor="demo-department">
-              <Select id="demo-department" name="department" defaultValue="Engineering">
-                <option>Engineering</option>
-                <option>Sales</option>
-                <option>Customer Support</option>
-                <option>People</option>
-                <option>Marketing</option>
-              </Select>
-            </Field>
-          </form>
-        </Modal>
-      )}
-
-      {selectedRow && (
-        <Drawer title={selectedRow.name} onClose={() => setSelectedRow(null)}>
-          <p style={{ color: 'var(--ink-soft)', marginBottom: 12 }}>{selectedRow.position}</p>
-          <p>
-            <strong>Отдел:</strong> {selectedRow.department}
-          </p>
-          <p style={{ marginTop: 8 }}>
-            <strong>Статус:</strong> {statusLabel[selectedRow.status].label}
-          </p>
-        </Drawer>
-      )}
     </>
   )
 }
