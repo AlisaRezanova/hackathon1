@@ -80,13 +80,29 @@ export function InterviewsPage() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const logRef = useRef<HTMLDivElement>(null)
 
+  // Guards two race conditions that both showed up as "the same question
+  // reappears after being answered": (1) a genuine double-submit (e.g. a
+  // held Enter key firing keydown twice) launches two identical in-flight
+  // requests; (2) an older, slower request (the LLM call timing out before
+  // the heuristic fallback kicks in takes ~12s) can resolve AFTER a newer
+  // request that already advanced the chat, clobbering it with a stale
+  // answer. `requestSeqRef` is bumped synchronously before every request;
+  // a response is only applied if it's still the most recent one issued.
+  const requestSeqRef = useRef(0)
+  function nextRequestToken() {
+    requestSeqRef.current += 1
+    return requestSeqRef.current
+  }
+
   function startChat() {
+    const token = nextRequestToken()
     setPhase('chat')
     setTurns([])
     setResult(null)
     setDraft('')
     setLoadingStep(true)
     fetchNextChatStep([]).then(({ data, usedMock }) => {
+      if (token !== requestSeqRef.current) return
       setCurrentStep(data)
       setLoadingStep(false)
       if (usedMock) toast.show('Backend недоступен — интервью идёт офлайн', 'default')
@@ -102,9 +118,10 @@ export function InterviewsPage() {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' })
   }, [turns, currentStep])
 
-  async function finishAndAnalyze(finishedTurns: ChatTurn[]) {
+  async function finishAndAnalyze(finishedTurns: ChatTurn[], token: number) {
     setPhase('analyzing')
     const { data, usedMock } = await analyzeInterview({ turns: finishedTurns })
+    if (token !== requestSeqRef.current) return
     if (usedMock) toast.show('Backend недоступен — показан упрощённый офлайн-разбор', 'default')
     setResult({ transcript: data.transcript, passport: data.passport })
     setPhase('result')
@@ -112,7 +129,14 @@ export function InterviewsPage() {
 
   async function submitAnswer(answer: string) {
     const trimmed = answer.trim()
+    // `loadingStep` alone isn't a reliable re-entrancy guard: it's React
+    // state, so a second call fired before this render commits (e.g. a
+    // held Enter key repeating) would still read the old `false` value.
+    // Bumping the token synchronously, before anything async, means a
+    // same-tick duplicate call gets a *different* token and its eventual
+    // response is recognized as stale and ignored below.
     if (!trimmed || !currentStep?.question || loadingStep) return
+    const token = nextRequestToken()
     const newTurn: AnsweredTurn = {
       question: currentStep.question,
       answer: trimmed,
@@ -124,9 +148,10 @@ export function InterviewsPage() {
     setDraft('')
     setLoadingStep(true)
     const { data, usedMock } = await fetchNextChatStep(nextTurns)
+    if (token !== requestSeqRef.current) return // a newer request has since started — discard
     if (usedMock) toast.show('Backend недоступен — дальше вопросы офлайн', 'default')
     if (data.done) {
-      await finishAndAnalyze(nextTurns)
+      await finishAndAnalyze(nextTurns, token)
       return
     }
     setCurrentStep(data)
@@ -143,9 +168,11 @@ export function InterviewsPage() {
     position: string
     transcript: string
   }) {
+    const token = nextRequestToken()
     setPasteOpen(false)
     setPhase('analyzing')
     analyzeInterview(payload).then(({ data, usedMock }) => {
+      if (token !== requestSeqRef.current) return
       if (usedMock) toast.show('Backend недоступен — показан упрощённый офлайн-разбор', 'default')
       setResult({ transcript: data.transcript, passport: data.passport })
       setPhase('result')
@@ -248,7 +275,10 @@ export function InterviewsPage() {
                     placeholder="Ваш ответ…"
                     disabled={loadingStep}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                      // `e.repeat` is true for OS key-auto-repeat while a key
+                      // is held — without this check, holding Enter even
+                      // briefly could fire submitAnswer twice for one answer.
+                      if (e.key === 'Enter' && !e.shiftKey && !e.repeat) {
                         e.preventDefault()
                         submitAnswer(draft)
                       }
