@@ -237,7 +237,12 @@ export function InterviewsPage() {
                   {turns.map((t, i) => (
                     <ChatTurnBubbles key={i} turn={t} />
                   ))}
-                  {currentStep?.question && (
+                  {/* Only while NOT loading — the just-answered question is
+                      already rendered above as part of `turns`. Without this
+                      guard, the same text briefly shows twice (once as
+                      history, once as a stale "current" bubble) for the
+                      2-3s it takes the next question to arrive. */}
+                  {currentStep?.question && !loadingStep && (
                     <div className="iv-bubble iv-bubble--question">
                       {currentStep.question}
                       <span className="iv-bubble__meta">
