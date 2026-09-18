@@ -126,6 +126,11 @@ IMPROVEMENT_TEMPLATES: dict[str, list[str]] = {
     ],
 }
 
+# Canonical category set, also used to seed the LLM prompt's "existing
+# categories" list (see llm.py) so new chat interviews normalize into the
+# same buckets seed.py already uses instead of fragmenting the dashboard.
+KNOWN_CATEGORIES = list(CATEGORY_KEYWORDS.keys())
+
 _NEGATIVE_FLAT = [kw for kws in CATEGORY_KEYWORDS.values() for kw, _ in kws] + RISK_HIGH_KEYWORDS
 _POSITIVE_FLAT = [kw for kw, _ in POSITIVE_KEYWORDS]
 
@@ -161,6 +166,57 @@ def heuristic_sentiment_arc(transcript: str, turns: list[dict] | None) -> list[f
     if not sentences:
         return [0.0]
     return [round(sentiment_score(s), 2) for s in sentences]
+
+
+def derive_preventability(
+    risk_zone: str, categories: list[dict], best_practices: list[dict]
+) -> tuple[str, str]:
+    """Deterministically estimate "could this exit have been prevented?".
+
+    Not an LLM call — a small function of fields already on the passport, so
+    it's available even for old records where nothing extra was persisted
+    (see `service.get_interview_detail`) and for the 12 seeded interviews
+    that predate this field entirely. The LLM path (`llm.py`) asks the model
+    for a richer, context-aware version of the same judgement; this is the
+    fallback when that isn't available or trusted.
+    """
+    total_mentions = sum(int(item.get("mentions", 1) or 1) for item in categories)
+    has_best_practices = bool(best_practices)
+
+    if risk_zone == "high" and total_mentions >= 2:
+        return (
+            "high",
+            "Проблема поднималась неоднократно и, судя по транскрипту, осталась без "
+            "изменений — уход, вероятно, можно было предотвратить.",
+        )
+    if risk_zone == "high":
+        return (
+            "medium",
+            "Риск высокий, но явных признаков того, что сотрудник заранее сигнализировал "
+            "о проблеме, немного — предотвратимость под вопросом.",
+        )
+    if risk_zone == "medium" and total_mentions >= 2:
+        return (
+            "medium",
+            "Проблема повторялась несколько раз — своевременное вмешательство могло "
+            "изменить решение сотрудника.",
+        )
+    if risk_zone == "medium":
+        return (
+            "medium",
+            "Системная проблема присутствует, но данных о том, поднимал ли её сотрудник "
+            "раньше, недостаточно.",
+        )
+    if has_best_practices:
+        return (
+            "low",
+            "Причина скорее внешняя или личная (карьерный шаг, оффер) — предотвратить "
+            "обычными HR-мерами сложно.",
+        )
+    return (
+        "low",
+        "Существенных признаков системной, регулярно поднимаемой проблемы не выявлено.",
+    )
 
 
 def heuristic_analyze(transcript: str, turns: list[dict] | None = None) -> dict:
@@ -242,6 +298,9 @@ def heuristic_analyze(transcript: str, turns: list[dict] | None = None) -> dict:
             break
 
     sentiment_arc = heuristic_sentiment_arc(transcript, turns)
+    preventability, preventability_reason = derive_preventability(
+        risk_zone, categories, best_practices
+    )
 
     return {
         "primary_category": primary_category,
@@ -250,5 +309,7 @@ def heuristic_analyze(transcript: str, turns: list[dict] | None = None) -> dict:
         "best_practices": best_practices,
         "improvement_suggestions": improvement_suggestions[:5],
         "sentiment_arc": sentiment_arc,
+        "preventability": preventability,
+        "preventability_reason": preventability_reason,
         "generated_by": "heuristic",
     }

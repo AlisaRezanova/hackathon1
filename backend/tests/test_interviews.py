@@ -5,10 +5,13 @@ live Postgres, same as `test_health.py`. The LLM key is monkeypatched to
 empty so these tests never hit the network — deterministic and free.
 """
 
+import json
+
 from fastapi.testclient import TestClient
 
 from app.config import settings
-from app.features.interviews.heuristic import heuristic_analyze
+from app.features.interviews import llm as llm_module
+from app.features.interviews.heuristic import derive_preventability, heuristic_analyze
 from app.features.interviews.questions import BASE_QUESTIONS, MAX_FOLLOWUPS, pick_fallback_followup
 from app.features.interviews.schemas import ChatTurn
 from app.features.interviews.service import _transcript_from_turns
@@ -83,10 +86,14 @@ def test_chat_stops_after_max_followups(monkeypatch) -> None:
     assert body["question"] is None
 
 
-def test_pick_fallback_followup_does_not_repeat_used_questions() -> None:
-    first = pick_fallback_followup(set(), "мало платят, деньги решают")
-    second = pick_fallback_followup({first}, "мало платят, деньги решают")
+def test_pick_fallback_followup_walks_evidence_ladder_without_repeats() -> None:
+    turns = [ChatTurn(question="Почему уходите?", answer="Мало платят, деньги решают")]
+    first = pick_fallback_followup(turns)
+    turns.append(ChatTurn(question=first, answer="Да, обсуждал с руководителем"))
+    second = pick_fallback_followup(turns)
     assert first != second
+    # Same category ladder (money) should keep being walked, not jump to generic.
+    assert second not in {t.question for t in turns}
 
 
 def test_heuristic_analyze_finds_known_category_and_quotes() -> None:
@@ -95,6 +102,8 @@ def test_heuristic_analyze_finds_known_category_and_quotes() -> None:
     assert passport["risk_zone"] in {"low", "medium", "high"}
     assert len(passport["improvement_suggestions"]) >= 3
     assert passport["generated_by"] == "heuristic"
+    assert passport["preventability"] in {"low", "medium", "high"}
+    assert passport["preventability_reason"]
 
     lowered_transcript = SAMPLE_TRANSCRIPT.lower()
     for item in passport["categories"]:
@@ -129,3 +138,43 @@ def test_heuristic_analyze_never_crashes_on_unmatched_text() -> None:
     assert passport["categories"]
     assert len(passport["improvement_suggestions"]) >= 3
     assert passport["sentiment_arc"]
+
+
+def test_derive_preventability_flags_repeated_unresolved_complaints_as_high() -> None:
+    categories = [
+        {"category": "Проблемы с руководством", "subtype": "критика", "quote": "x", "mentions": 3}
+    ]
+    preventability, reason = derive_preventability("high", categories, [])
+    assert preventability == "high"
+    assert reason
+
+
+def test_derive_preventability_treats_growth_moves_as_low() -> None:
+    preventability, _reason = derive_preventability("low", [], [{"label": "x", "quote": "y"}])
+    assert preventability == "low"
+
+
+def test_generate_llm_passport_injects_known_categories_into_prompt(monkeypatch) -> None:
+    captured: dict = {}
+
+    def fake_post(messages: list[dict], temperature: float, timeout_seconds: float) -> str:
+        captured["messages"] = messages
+        return json.dumps(
+            {
+                "primary_category": "Компенсация",
+                "risk_zone": "medium",
+                "categories": [],
+                "best_practices": [],
+                "improvement_suggestions": ["a", "b", "c"],
+                "sentiment_arc": [0.0],
+                "preventability": "medium",
+                "preventability_reason": "test",
+            }
+        )
+
+    monkeypatch.setattr(llm_module, "_post", fake_post)
+    result = llm_module.generate_llm_passport("транскрипт", ["Компенсация", "Карьерный рост"])
+    assert result is not None
+    system_message = captured["messages"][0]["content"]
+    assert "Компенсация" in system_message
+    assert "Карьерный рост" in system_message

@@ -13,7 +13,11 @@ from datetime import date
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.features.interviews.heuristic import heuristic_analyze
+from app.features.interviews.heuristic import (
+    KNOWN_CATEGORIES,
+    derive_preventability,
+    heuristic_analyze,
+)
 from app.features.interviews.llm import generate_followup_question, generate_llm_passport
 from app.features.interviews.questions import (
     BASE_QUESTIONS,
@@ -34,6 +38,7 @@ from app.features.interviews.schemas import (
 from app.models import Department, ExitAnalysis, ExitInterview, InterviewSource, RiskZone
 
 _VALID_RISK_ZONES = {"low", "medium", "high"}
+_VALID_PREVENTABILITY = {"low", "medium", "high"}
 
 
 def build_chat_response(request: ChatRequest) -> ChatResponse:
@@ -66,9 +71,7 @@ def build_chat_response(request: ChatRequest) -> ChatResponse:
             question=llm_question, done=False, step=step, kind="followup", generated_by="llm"
         )
 
-    used_questions = {t.question for t in turns}
-    last_answer = turns[-1].answer if turns else ""
-    fallback_question = pick_fallback_followup(used_questions, last_answer)
+    fallback_question = pick_fallback_followup(turns)
     return ChatResponse(
         question=fallback_question,
         done=False,
@@ -133,6 +136,11 @@ def _passport_is_trustworthy(passport: dict, transcript: str) -> bool:
     except (TypeError, ValueError):
         return False
 
+    if passport.get("preventability") not in _VALID_PREVENTABILITY:
+        return False
+    if not str(passport.get("preventability_reason", "")).strip():
+        return False
+
     return True
 
 
@@ -152,6 +160,13 @@ def _normalize_passport(passport: dict) -> dict:
         for item in passport.get("best_practices", [])
     ]
     sentiment_arc = [max(-1.0, min(1.0, float(v))) for v in passport.get("sentiment_arc", [])]
+    preventability = passport.get("preventability")
+    if preventability not in _VALID_PREVENTABILITY:
+        preventability, preventability_reason = derive_preventability(
+            passport["risk_zone"], categories, best_practices
+        )
+    else:
+        preventability_reason = str(passport.get("preventability_reason", "")).strip()
     return {
         "primary_category": str(passport.get("primary_category", "Другое")),
         "risk_zone": passport["risk_zone"],
@@ -159,13 +174,17 @@ def _normalize_passport(passport: dict) -> dict:
         "best_practices": best_practices,
         "improvement_suggestions": [str(s) for s in passport.get("improvement_suggestions", [])],
         "sentiment_arc": sentiment_arc,
+        "preventability": preventability,
+        "preventability_reason": preventability_reason,
         "generated_by": passport.get("generated_by", "heuristic"),
     }
 
 
-def build_passport(transcript: str, turns: list[ChatTurn] | None = None) -> dict:
+def build_passport(
+    transcript: str, turns: list[ChatTurn] | None = None, known_categories: list[str] | None = None
+) -> dict:
     """Try the LLM, validate it against the transcript, else use the heuristic."""
-    llm_passport = generate_llm_passport(transcript)
+    llm_passport = generate_llm_passport(transcript, known_categories or KNOWN_CATEGORIES)
     if llm_passport is not None:
         llm_passport = {**llm_passport, "generated_by": "llm"}
         if _passport_is_trustworthy(llm_passport, transcript):
@@ -176,19 +195,20 @@ def build_passport(transcript: str, turns: list[ChatTurn] | None = None) -> dict
 
 
 def _resolve_department(db: Session, name: str | None) -> Department:
-    candidate = (name or "").strip()
-    if candidate:
-        existing = (
-            db.query(Department).filter(func.lower(Department.name) == candidate.lower()).first()
-        )
-        if existing:
-            return existing
+    # Bug fixed here: the exact-match lookup used to run only when `name` was
+    # given, so a second analyze with no department (e.g. a pasted transcript)
+    # always tried to INSERT a fresh "Другое" row and hit the unique
+    # constraint on the second call. Always look up by the final candidate.
+    raw = (name or "").strip()
+    candidate = raw or "Другое"
+    existing = db.query(Department).filter(func.lower(Department.name) == candidate.lower()).first()
+    if existing:
+        return existing
+    if raw:
         # Loose match: the chat answer may be a full sentence containing the name.
         for dept in db.query(Department).all():
-            if dept.name.lower() in candidate.lower():
+            if dept.name.lower() in raw.lower():
                 return dept
-    else:
-        candidate = "Другое"
     department = Department(name=candidate)
     db.add(department)
     db.flush()
@@ -205,7 +225,11 @@ def analyze_and_save(db: Session, request: AnalyzeRequest) -> AnalyzeResponse:
     else:
         raise ValueError("Either 'turns' or 'transcript' is required")
 
-    passport_dict = build_passport(transcript, turns)
+    existing_categories = {
+        row[0] for row in db.query(ExitAnalysis.primary_category).distinct().all()
+    }
+    known_categories = sorted(existing_categories | set(KNOWN_CATEGORIES))
+    passport_dict = build_passport(transcript, turns, known_categories)
 
     department_name = request.department
     position = request.position
@@ -279,6 +303,12 @@ def get_interview_detail(db: Session, interview_id: int) -> InterviewDetail | No
     analysis = interview.analysis
     passport = None
     if analysis:
+        # `preventability` isn't a DB column (models.py is frozen) — recomputed
+        # deterministically from the stored fields for every read, so it's
+        # available even for the 12 seeded interviews. See heuristic.py.
+        preventability, preventability_reason = derive_preventability(
+            analysis.risk_zone.value, analysis.categories, analysis.best_practices
+        )
         passport = PassportOut(
             primary_category=analysis.primary_category,
             risk_zone=analysis.risk_zone.value,
@@ -286,6 +316,8 @@ def get_interview_detail(db: Session, interview_id: int) -> InterviewDetail | No
             best_practices=analysis.best_practices,
             improvement_suggestions=analysis.improvement_suggestions,
             sentiment_arc=analysis.sentiment_arc,
+            preventability=preventability,
+            preventability_reason=preventability_reason,
             generated_by=analysis.generated_by,
         )
     return InterviewDetail(

@@ -55,6 +55,12 @@ class PassportOut(BaseModel):
     best_practices: list[BestPractice]
     improvement_suggestions: list[str]
     sentiment_arc: list[float]
+    # "Could this exit have been prevented?" — high/medium/low + a one-sentence
+    # rationale. Not a DB column (models.py is frozen); always derived, either
+    # by the LLM at analysis time or deterministically from risk_zone/categories
+    # when reading older records back (see service.derive_preventability usage).
+    preventability: str = "medium"
+    preventability_reason: str = ""
     generated_by: GeneratedBy
 
 
