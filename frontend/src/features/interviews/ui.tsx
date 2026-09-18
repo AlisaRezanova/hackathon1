@@ -82,6 +82,7 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
   const [result, setResult] = useState<{ transcript: string; passport: Passport } | null>(null)
   const [pasteOpen, setPasteOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [employeeLink, setEmployeeLink] = useState<string | null>(null)
   const logRef = useRef<HTMLDivElement>(null)
 
   // Guards two race conditions that both showed up as "the same question
@@ -167,6 +168,17 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
     submitAnswer(draft)
   }
 
+  function openEmployeeLinkModal() {
+    // Purely client-side (see router.tsx) — the token isn't checked against
+    // anything on the backend, it just gives each sent-out link a distinct
+    // URL. A short random id is enough for a demo; no persistence needed.
+    const token =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID().slice(0, 8)
+        : Math.random().toString(36).slice(2, 10)
+    setEmployeeLink(`${window.location.origin}/interview/${token}`)
+  }
+
   function handlePasteSubmit(payload: {
     department: string
     position: string
@@ -195,19 +207,20 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
         eyebrow={employeeMode ? undefined : 'Фича: interviews'}
         title="Exit-интервью → паспорт проблемы"
         actions={
-          employeeMode ? undefined : phase === 'chat' ? (
+          employeeMode ? undefined : (
             <>
+              <Button variant="primary" onClick={openEmployeeLinkModal}>
+                Ссылка для сотрудника
+              </Button>
               <Button variant="secondary" onClick={() => setHistoryOpen(true)}>
                 История интервью
               </Button>
-              <Button variant="ghost" onClick={() => setPasteOpen(true)}>
-                Вставить готовый транскрипт
-              </Button>
+              {phase === 'chat' && (
+                <Button variant="ghost" onClick={() => setPasteOpen(true)}>
+                  Вставить готовый транскрипт
+                </Button>
+              )}
             </>
-          ) : (
-            <Button variant="secondary" onClick={() => setHistoryOpen(true)}>
-              История интервью
-            </Button>
           )
         }
       />
@@ -319,7 +332,53 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
         <PasteTranscriptModal onClose={() => setPasteOpen(false)} onSubmit={handlePasteSubmit} />
       )}
       {!employeeMode && historyOpen && <HistoryDrawer onClose={() => setHistoryOpen(false)} />}
+      {!employeeMode && employeeLink && (
+        <EmployeeLinkModal link={employeeLink} onClose={() => setEmployeeLink(null)} />
+      )}
     </>
+  )
+}
+
+function EmployeeLinkModal({ link, onClose }: { link: string; onClose: () => void }) {
+  const toast = useToast()
+
+  function copyLink() {
+    if (!navigator.clipboard) {
+      toast.show('Скопируйте ссылку вручную — буфер обмена недоступен', 'default')
+      return
+    }
+    navigator.clipboard.writeText(link).then(
+      () => toast.show('Ссылка скопирована', 'success'),
+      () => toast.show('Не удалось скопировать — выделите ссылку вручную', 'error'),
+    )
+  }
+
+  return (
+    <Modal
+      title="Ссылка для сотрудника"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Закрыть
+          </Button>
+          <Button onClick={copyLink}>Скопировать</Button>
+        </>
+      }
+    >
+      <p style={{ marginBottom: 14, fontSize: 13.5, color: 'var(--ink-soft)' }}>
+        Отправьте эту ссылку сотруднику — он пройдёт интервью на отдельной странице без меню и
+        без доступа к данным других сотрудников.
+      </p>
+      <Field label="Ссылка на интервью" htmlFor="employee-link">
+        <Input
+          id="employee-link"
+          readOnly
+          value={link}
+          onFocus={(e) => e.currentTarget.select()}
+        />
+      </Field>
+    </Modal>
   )
 }
 
