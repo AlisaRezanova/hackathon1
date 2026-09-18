@@ -23,7 +23,7 @@ import type {
   RiskZone,
 } from './types'
 
-const TOTAL_QUESTIONS_HINT = 6 // 3 base + up to 3 follow-ups — for the progress dots only
+const TOTAL_QUESTIONS_HINT = 6 // 3 base + up to 3 follow-ups — for the progress bar only
 
 const riskTone: Record<RiskZone, 'default' | 'amber' | 'danger'> = {
   low: 'default',
@@ -61,6 +61,17 @@ type Phase = 'chat' | 'analyzing' | 'result'
 interface AnsweredTurn extends ChatTurn {
   kind: ChatResponse['kind']
   generated_by: GeneratedBy
+}
+
+// The little dot + label under each question names which of the three
+// sources asked it — the fixed script, the live model, or the scripted
+// fallback used when the model isn't available — so the colour carries
+// that distinction instead of decorating the bubble.
+function questionMeta(kind: ChatResponse['kind'], generatedBy: GeneratedBy) {
+  if (kind === 'base') return { text: 'базовый вопрос', className: 'iv-bubble__meta--base' }
+  return generatedBy === 'llm'
+    ? { text: 'уточняющий · LLM', className: 'iv-bubble__meta--llm' }
+    : { text: 'уточняющий · резерв', className: 'iv-bubble__meta--heuristic' }
 }
 
 /**
@@ -212,14 +223,16 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
               <Button variant="primary" onClick={openEmployeeLinkModal}>
                 Ссылка для сотрудника
               </Button>
-              <Button variant="secondary" onClick={() => setHistoryOpen(true)}>
-                История интервью
-              </Button>
-              {phase === 'chat' && (
-                <Button variant="ghost" onClick={() => setPasteOpen(true)}>
-                  Вставить готовый транскрипт
+              <div className="iv-header-utility">
+                <Button variant="ghost" onClick={() => setHistoryOpen(true)}>
+                  История интервью
                 </Button>
-              )}
+                {phase === 'chat' && (
+                  <Button variant="ghost" onClick={() => setPasteOpen(true)}>
+                    Вставить транскрипт
+                  </Button>
+                )}
+              </div>
             </>
           )
         }
@@ -230,23 +243,23 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
             {phase === 'chat' && (
               <>
                 <div className="iv-progress">
-                  <span>
+                  <span className="iv-progress__label">
                     Вопрос {Math.min(progressCurrent, TOTAL_QUESTIONS_HINT)} · до{' '}
                     {TOTAL_QUESTIONS_HINT} вопросов
                   </span>
-                  <div className="iv-progress__dots" aria-hidden="true">
-                    {Array.from({ length: TOTAL_QUESTIONS_HINT }, (_, i) => (
-                      <span
-                        key={i}
-                        className={`iv-progress__dot${
-                          i < answeredCount
-                            ? ' iv-progress__dot--done'
-                            : i === answeredCount
-                              ? ' iv-progress__dot--current'
-                              : ''
-                        }`}
-                      />
-                    ))}
+                  <div
+                    className="iv-progress__track"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={TOTAL_QUESTIONS_HINT}
+                    aria-valuenow={Math.min(progressCurrent, TOTAL_QUESTIONS_HINT)}
+                  >
+                    <div
+                      className="iv-progress__fill"
+                      style={{
+                        width: `${(Math.min(progressCurrent, TOTAL_QUESTIONS_HINT) / TOTAL_QUESTIONS_HINT) * 100}%`,
+                      }}
+                    />
                   </div>
                 </div>
 
@@ -259,18 +272,17 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
                       guard, the same text briefly shows twice (once as
                       history, once as a stale "current" bubble) for the
                       2-3s it takes the next question to arrive. */}
-                  {currentStep?.question && !loadingStep && (
-                    <div className="iv-bubble iv-bubble--question">
-                      {currentStep.question}
-                      <span className="iv-bubble__meta">
-                        {currentStep.kind === 'followup'
-                          ? currentStep.generated_by === 'llm'
-                            ? 'уточняющий · LLM'
-                            : 'уточняющий · резерв'
-                          : 'базовый вопрос'}
-                      </span>
-                    </div>
-                  )}
+                  {currentStep?.question &&
+                    !loadingStep &&
+                    (() => {
+                      const meta = questionMeta(currentStep.kind, currentStep.generated_by)
+                      return (
+                        <div className="iv-bubble iv-bubble--question">
+                          {currentStep.question}
+                          <span className={`iv-bubble__meta ${meta.className}`}>{meta.text}</span>
+                        </div>
+                      )
+                    })()}
                   {loadingStep && (
                     <div className="iv-typing" aria-label="Печатает">
                       <span />
@@ -283,9 +295,14 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
                 {currentStep?.quick_replies && !loadingStep && (
                   <div className="iv-quick-replies">
                     {currentStep.quick_replies.map((option) => (
-                      <Button key={option} variant="secondary" onClick={() => submitAnswer(option)}>
+                      <button
+                        key={option}
+                        type="button"
+                        className="iv-chip"
+                        onClick={() => submitAnswer(option)}
+                      >
                         {option}
-                      </Button>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -326,6 +343,8 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
             />
           </Card>
         )}
+
+        <InterviewSidePanel employeeMode={employeeMode} />
       </div>
 
       {!employeeMode && pasteOpen && (
@@ -377,18 +396,50 @@ function EmployeeLinkModal({ link, onClose }: { link: string; onClose: () => voi
   )
 }
 
+/**
+ * Fills the space beside the chat on wide screens with something worth
+ * reading instead of leaving it empty — what the badges under each question
+ * mean for HR, or a plain-language privacy note for the employee who just
+ * clicked an unfamiliar link. Hidden below ~1080px (see interviews.css).
+ */
+function InterviewSidePanel({ employeeMode }: { employeeMode: boolean }) {
+  if (employeeMode) {
+    return (
+      <aside className="iv-side">
+        <h2 className="iv-side__title">Об этом интервью</h2>
+        <ol className="iv-side__steps">
+          <li>Это разговор с ИИ-интервьюером — представляться по имени не нужно.</li>
+          <li>Обычно 4–6 коротких вопросов, около 3–5 минут.</li>
+          <li>
+            Ответы смотрит HR-команда, чтобы находить системные проблемы — не для оценки лично вас.
+          </li>
+        </ol>
+      </aside>
+    )
+  }
+  return (
+    <aside className="iv-side">
+      <h2 className="iv-side__title">Как устроено интервью</h2>
+      <ol className="iv-side__steps">
+        <li>Три обязательных вопроса — отдел, должность, главная причина ухода.</li>
+        <li>До трёх уточняющих вопросов, если причина требует уточнения.</li>
+        <li>Готовый паспорт проблемы: категория, риск и гипотезы для HR.</li>
+      </ol>
+      <p className="iv-side__note">
+        Метка под уточняющим вопросом показывает источник: <strong>LLM</strong> — вопрос придумала
+        модель, <strong>резерв</strong> — заготовленный вопрос на случай, если модель недоступна.
+      </p>
+    </aside>
+  )
+}
+
 function ChatTurnBubbles({ turn }: { turn: AnsweredTurn }) {
+  const meta = questionMeta(turn.kind, turn.generated_by)
   return (
     <>
       <div className="iv-bubble iv-bubble--question">
         {turn.question}
-        <span className="iv-bubble__meta">
-          {turn.kind === 'followup'
-            ? turn.generated_by === 'llm'
-              ? 'уточняющий · LLM'
-              : 'уточняющий · резерв'
-            : 'базовый вопрос'}
-        </span>
+        <span className={`iv-bubble__meta ${meta.className}`}>{meta.text}</span>
       </div>
       <div className="iv-bubble iv-bubble--answer">{turn.answer}</div>
     </>

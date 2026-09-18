@@ -5,35 +5,44 @@
   display: grid;
   grid-template-columns: minmax(0, 640px);
   gap: 20px;
+  align-items: start;
 }
 
+/* Second column appears once there's room for it without cramping the
+   chat — fills what would otherwise be dead space with the one thing
+   worth saying there instead of a decorative filler. */
+@media (min-width: 1080px) {
+  .iv-layout {
+    grid-template-columns: minmax(0, 640px) minmax(240px, 300px);
+  }
+}
+
+/* A ledger ruler, not a SaaS step-dot tracker: this is a real bounded
+   sequence (up to 6 questions), so a filled rule reads as "how much of
+   the form is done" the way a paper form's progress would. */
 .iv-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
+}
+
+.iv-progress__label {
+  display: block;
   font-size: 13px;
   color: var(--ink-soft);
+  margin-bottom: 6px;
 }
 
-.iv-progress__dots {
-  display: flex;
-  gap: 5px;
+.iv-progress__track {
+  height: 3px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
 }
 
-.iv-progress__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--line-strong);
-}
-
-.iv-progress__dot--done {
+.iv-progress__fill {
+  height: 100%;
   background: var(--accent);
-}
-
-.iv-progress__dot--current {
-  background: var(--amber);
+  border-radius: 2px;
+  transition: width 0.25s ease;
 }
 
 .iv-chat__log {
@@ -69,17 +78,73 @@
 }
 
 .iv-bubble__meta {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 11px;
-  margin-top: 4px;
-  opacity: 0.7;
+  margin-top: 5px;
+  color: var(--ink-soft);
 }
 
+.iv-bubble__meta::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Color carries meaning here, not decoration: which of the three question
+   sources asked this — the fixed script, the live model, or the scripted
+   fallback used when the model isn't available. */
+.iv-bubble__meta--base {
+  color: var(--ink-soft);
+}
+
+.iv-bubble__meta--llm {
+  color: var(--accent-strong);
+}
+
+.iv-bubble__meta--heuristic {
+  color: var(--amber);
+}
+
+/* Suggested answers read as taps, not commitments — an outline pill kept
+   deliberately lighter than shared/ui's Button so it doesn't compete with
+   the one real call to action on the screen (the send button). */
 .iv-quick-replies {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.iv-chip {
+  appearance: none;
+  font: inherit;
+  font-size: 13.5px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background 0.15s ease;
+}
+
+.iv-chip:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  background: var(--accent-tint);
+}
+
+.iv-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .iv-composer {
@@ -301,4 +366,79 @@
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 14px;
+}
+
+/* ---- Header action grouping ---- */
+/* One bold move (the primary CTA) and one quiet, hairline-separated pair of
+   utility actions next to it — instead of three buttons of similar weight
+   competing for attention. */
+.iv-header-utility {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+
+/* ---- Explainer rail (fills the space beside the chat on wide screens) ---- */
+.iv-side {
+  border-left: 1px solid var(--line);
+  padding-left: 24px;
+}
+
+.iv-side__title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  margin-bottom: 14px;
+}
+
+.iv-side__steps {
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+  counter-reset: iv-step;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.iv-side__steps li {
+  counter-increment: iv-step;
+  display: flex;
+  gap: 10px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.iv-side__steps li::before {
+  content: counter(iv-step);
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+  font-size: 11.5px;
+  color: var(--ink);
+}
+
+.iv-side__note {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.iv-side__note strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+@media (max-width: 1079px) {
+  .iv-side {
+    display: none;
+  }
 }
