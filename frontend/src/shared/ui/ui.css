@@ -184,6 +184,30 @@
   padding: 16px 18px;
 }
 
+.ui-stat-card--clickable {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.ui-stat-card--clickable:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-card, 0 4px 14px rgba(20, 24, 31, 0.08));
+  transform: translateY(-1px);
+}
+
+.ui-stat-card--clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .ui-stat-card__label {
   font-size: 13px;
   color: var(--ink-soft);
@@ -392,7 +416,9 @@
 
 .ui-modal {
   margin: auto;
-  width: min(480px, calc(100vw - 32px));
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(560px, calc(100vh - 64px));
+  overflow-y: auto;
   background: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-modal);

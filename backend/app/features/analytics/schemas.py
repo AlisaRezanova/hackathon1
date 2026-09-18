@@ -5,6 +5,8 @@ per-category drill-down (subtypes, quotes, heuristic cluster summary),
 aggregated from `app.models.ExitAnalysis` / `ExitInterview`.
 """
 
+from datetime import date
+
 from pydantic import BaseModel
 
 
@@ -46,5 +48,33 @@ class CategoryDrilldown(BaseModel):
     interview_count: int
     subtypes: list[SubtypeCount]
     quotes: list[CategoryQuote]
+    summary: str
+    generated_by: str  # "llm" | "heuristic"
+
+
+class CategoryAdvice(BaseModel):
+    category: str
+    solutions: list[str]  # >= 3 concrete ways to address this category
+    generated_by: str  # "llm" | "heuristic"
+
+
+class InterviewListItem(BaseModel):
+    id: int
+    employee_alias: str
+    position: str
+    department: str
+    interview_date: date
+    primary_category: str
+    risk_zone: str
+
+
+class DepartmentDrilldown(BaseModel):
+    department: str
+    total: int
+    low: int
+    medium: int
+    high: int
+    high_percent: float
+    top_categories: list[CategoryShare]
     summary: str
     generated_by: str  # "llm" | "heuristic"

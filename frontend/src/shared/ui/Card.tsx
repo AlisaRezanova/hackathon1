@@ -31,14 +31,16 @@ export function StatCard({
   value,
   delta,
   down,
+  onClick,
 }: {
   label: string
   value: string
   delta?: string
   down?: boolean
+  onClick?: () => void
 }) {
-  return (
-    <div className="ui-stat-card">
+  const content = (
+    <>
       <div className="ui-stat-card__label">{label}</div>
       <div className="ui-stat-card__value">{value}</div>
       {delta && (
@@ -46,6 +48,16 @@ export function StatCard({
           {delta}
         </div>
       )}
-    </div>
+    </>
   )
+
+  if (onClick) {
+    return (
+      <button type="button" className="ui-stat-card ui-stat-card--clickable" onClick={onClick}>
+        {content}
+      </button>
+    )
+  }
+
+  return <div className="ui-stat-card">{content}</div>
 }
