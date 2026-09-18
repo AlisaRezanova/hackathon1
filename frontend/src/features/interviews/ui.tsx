@@ -24,7 +24,7 @@ import type {
   RiskZone,
 } from './types'
 
-const TOTAL_QUESTIONS_HINT = 6 // 3 base + up to 3 follow-ups — for the progress dots only
+const TOTAL_QUESTIONS_HINT = 6 // 3 base + up to 3 follow-ups — for the progress bar only
 
 const riskTone: Record<RiskZone, 'default' | 'amber' | 'danger'> = {
   low: 'default',
@@ -62,6 +62,14 @@ type Phase = 'chat' | 'analyzing' | 'result'
 interface AnsweredTurn extends ChatTurn {
   kind: ChatResponse['kind']
   generated_by: GeneratedBy
+}
+
+// The label under each question names which of the three sources asked it —
+// the fixed script, the live model, or the scripted fallback used when the
+// model isn't available.
+function questionMeta(kind: ChatResponse['kind'], generatedBy: GeneratedBy): string {
+  if (kind === 'base') return 'базовый вопрос'
+  return generatedBy === 'llm' ? 'уточняющий · LLM' : 'уточняющий · резерв'
 }
 
 /**
@@ -236,7 +244,13 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
                     Вопрос {Math.min(progressCurrent, TOTAL_QUESTIONS_HINT)} · до{' '}
                     {TOTAL_QUESTIONS_HINT} вопросов
                   </span>
-                  <div className="iv-progress__dots" aria-hidden="true">
+                  <div
+                    className="iv-progress__dots"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={TOTAL_QUESTIONS_HINT}
+                    aria-valuenow={Math.min(progressCurrent, TOTAL_QUESTIONS_HINT)}
+                  >
                     {Array.from({ length: TOTAL_QUESTIONS_HINT }, (_, i) => (
                       <span
                         key={i}
@@ -265,11 +279,7 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
                     <div className="iv-bubble iv-bubble--question">
                       {currentStep.question}
                       <span className="iv-bubble__meta">
-                        {currentStep.kind === 'followup'
-                          ? currentStep.generated_by === 'llm'
-                            ? 'уточняющий · LLM'
-                            : 'уточняющий · резерв'
-                          : 'базовый вопрос'}
+                        {questionMeta(currentStep.kind, currentStep.generated_by)}
                       </span>
                     </div>
                   )}
@@ -332,15 +342,24 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
           <div className="iv-context__label">Как проходит разговор</div>
           <div className="iv-context__step">
             <span>1</span>
-            <div><strong>Контекст</strong><small>Отдел, роль и причина решения</small></div>
+            <div>
+              <strong>Контекст</strong>
+              <small>Отдел, роль и причина решения</small>
+            </div>
           </div>
           <div className="iv-context__step">
             <span>2</span>
-            <div><strong>Уточнения</strong><small>AI запрашивает пример и доказательство</small></div>
+            <div>
+              <strong>Уточнения</strong>
+              <small>AI запрашивает пример и доказательство</small>
+            </div>
           </div>
           <div className="iv-context__step">
             <span>3</span>
-            <div><strong>Паспорт</strong><small>Причины, цитаты и гипотезы решения</small></div>
+            <div>
+              <strong>Паспорт</strong>
+              <small>Причины, цитаты и гипотезы решения</small>
+            </div>
           </div>
           <p>Обычно достаточно 5–7 минут. Ответы можно давать в свободной форме.</p>
         </aside>
@@ -400,13 +419,7 @@ function ChatTurnBubbles({ turn }: { turn: AnsweredTurn }) {
     <>
       <div className="iv-bubble iv-bubble--question">
         {turn.question}
-        <span className="iv-bubble__meta">
-          {turn.kind === 'followup'
-            ? turn.generated_by === 'llm'
-              ? 'уточняющий · LLM'
-              : 'уточняющий · резерв'
-            : 'базовый вопрос'}
-        </span>
+        <span className="iv-bubble__meta">{questionMeta(turn.kind, turn.generated_by)}</span>
       </div>
       <div className="iv-bubble iv-bubble--answer">{turn.answer}</div>
     </>
