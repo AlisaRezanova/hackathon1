@@ -1,0 +1,304 @@
+/* Styles for the interviews feature (chat + problem passport). Prefixed
+   `iv-` so nothing collides with shared/ui/ui.css — see .claude/skills/frontend-design. */
+
+.iv-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 640px);
+  gap: 20px;
+}
+
+.iv-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.iv-progress__dots {
+  display: flex;
+  gap: 5px;
+}
+
+.iv-progress__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+
+.iv-progress__dot--done {
+  background: var(--accent);
+}
+
+.iv-progress__dot--current {
+  background: var(--amber);
+}
+
+.iv-chat__log {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.iv-bubble {
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.iv-bubble--question {
+  align-self: flex-start;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-bottom-left-radius: 4px;
+}
+
+.iv-bubble--answer {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.iv-bubble__meta {
+  display: block;
+  font-size: 11px;
+  margin-top: 4px;
+  opacity: 0.7;
+}
+
+.iv-quick-replies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.iv-composer {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.iv-composer textarea {
+  flex: 1;
+  min-height: 44px;
+  max-height: 140px;
+}
+
+.iv-typing {
+  align-self: flex-start;
+  display: flex;
+  gap: 4px;
+  padding: 10px 14px;
+}
+
+.iv-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-strong);
+  animation: iv-typing-bounce 1s infinite ease-in-out;
+}
+
+.iv-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.iv-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes iv-typing-bounce {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iv-typing span {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
+/* ---- Passport ---- */
+.iv-passport__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.iv-passport__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.iv-passport__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.iv-passport__reason {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin: -10px 0 18px;
+}
+
+.iv-section {
+  margin-bottom: 22px;
+}
+
+.iv-section__title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
+  margin-bottom: 10px;
+}
+
+.iv-category-group {
+  margin-bottom: 12px;
+}
+
+.iv-category-group__name {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.iv-quote-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+
+.iv-quote-item:first-child {
+  border-top: none;
+}
+
+.iv-quote-item__body {
+  min-width: 0;
+}
+
+.iv-quote-item__subtype {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 3px;
+}
+
+.iv-quote-item__quote {
+  font-style: italic;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.iv-quote-item__quote::before {
+  content: '\201C';
+}
+
+.iv-quote-item__quote::after {
+  content: '\201D';
+}
+
+.iv-quote-item__mentions {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.iv-suggestions {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.iv-sentiment {
+  display: block;
+  width: 100%;
+  height: 84px;
+}
+
+.iv-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* ---- History drawer rows ---- */
+.iv-history-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  cursor: pointer;
+  background: none;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  text-align: left;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+}
+
+.iv-history-row:first-child {
+  border-top: none;
+}
+
+.iv-history-row:hover {
+  color: var(--accent-strong);
+}
+
+.iv-history-row__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.iv-history-row__meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.iv-example-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
