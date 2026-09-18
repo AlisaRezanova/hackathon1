@@ -1,10 +1,10 @@
 """Seed the database with synthetic exit-interview demo data — FROZEN seam.
 
-Fills every table in one place: `Department`, `ExitInterview` (raw
-anonymized transcripts — the assignment's input dataset) and `ExitAnalysis`
-(pre-computed "problem passports" — so the `analytics` feature has full
-aggregate data to read immediately, without waiting on `interviews`' live
-LLM pipeline to run first).
+Fills every table in one place: `Department`, `ExitInterview` (anonymized
+transcripts, `source="seed"`) and `ExitAnalysis` (pre-computed "problem
+passports" — `primary_category` + normalized/clustered `categories`, so the
+`analytics` feature has full aggregate data to read immediately, without
+waiting on `interviews`' live chat + LLM pipeline to produce anything).
 
 Idempotent: if departments already exist, does nothing (safe to re-run via
 `make seed`). To force a clean reseed, use `make reset-data`.
@@ -16,7 +16,7 @@ from datetime import date, timedelta
 from random import Random
 
 from app.db import Base, SessionLocal, engine
-from app.models import Department, ExitAnalysis, ExitInterview, ExitReason, RiskZone
+from app.models import Department, ExitAnalysis, ExitInterview, RiskZone
 
 DEPARTMENTS = ["Разработка", "Продажи", "Поддержка", "HR", "Маркетинг"]
 
@@ -34,11 +34,19 @@ INTERVIEWS: list[dict] = [
             "могло бы удержать? — Если бы согласования шли быстрее и команда сама могла "
             "принимать часть решений — я бы, наверное, остался."
         ),
-        "exit_reason": ExitReason.CAREER,
+        "primary_category": "Процессы и согласования",
         "risk_zone": RiskZone.MEDIUM,
-        "pain_points": [
-            {"label": "Долгое согласование ТЗ", "mentions": 3},
-            {"label": "Переделки после старта работ", "mentions": 2},
+        "categories": [
+            {
+                "category": "Процессы и согласования",
+                "subtype": "долгое согласование ТЗ",
+                "quote": "мы полгода обсуждаем ТЗ, а потом переделываем за неделю",
+            },
+            {
+                "category": "Процессы и согласования",
+                "subtype": "переделки после старта работ",
+                "quote": "Процесс согласования — это ад",
+            },
         ],
         "best_practices": [
             {
@@ -66,11 +74,19 @@ INTERVIEWS: list[dict] = [
             "раз в год под рынок и прозрачная вилка для грейдов — тогда бы я даже не стал "
             "смотреть предложения на стороне."
         ),
-        "exit_reason": ExitReason.MONEY,
+        "primary_category": "Компенсация",
         "risk_zone": RiskZone.MEDIUM,
-        "pain_points": [
-            {"label": "Нет ежегодного пересмотра зарплаты", "mentions": 3},
-            {"label": "Непрозрачные грейды", "mentions": 1},
+        "categories": [
+            {
+                "category": "Компенсация",
+                "subtype": "нет ежегодного пересмотра зарплаты",
+                "quote": "зарплату не пересматривали два года, хотя я просил на каждом ревью",
+            },
+            {
+                "category": "Компенсация",
+                "subtype": "непрозрачные грейды",
+                "quote": "бюджет на повышение не выделяли",
+            },
         ],
         "best_practices": [
             {
@@ -98,11 +114,19 @@ INTERVIEWS: list[dict] = [
             "могло бы удержать? — Ротация задач хотя бы раз в квартал или обучение "
             "автоматизации за счёт компании."
         ),
-        "exit_reason": ExitReason.UNFULFILLMENT,
+        "primary_category": "Карьерный рост",
         "risk_zone": RiskZone.LOW,
-        "pain_points": [
-            {"label": "Однообразные задачи без развития", "mentions": 3},
-            {"label": "Нет ротации и обучения", "mentions": 2},
+        "categories": [
+            {
+                "category": "Карьерный рост",
+                "subtype": "однообразные задачи без развития",
+                "quote": "Полгода тестирую одну и ту же форму регистрации",
+            },
+            {
+                "category": "Карьерный рост",
+                "subtype": "нет ротации и обучения",
+                "quote": "сказали, что сейчас не время, нужны руки на регрессе",
+            },
         ],
         "best_practices": [
             {
@@ -130,9 +154,15 @@ INTERVIEWS: list[dict] = [
             "могло бы удержать? — Понятный трек до lead-роли или хотя бы горизонтальный "
             "рост в архитектуру."
         ),
-        "exit_reason": ExitReason.CAREER,
+        "primary_category": "Карьерный рост",
         "risk_zone": RiskZone.LOW,
-        "pain_points": [{"label": "Нет карьерного трека выше текущей роли", "mentions": 2}],
+        "categories": [
+            {
+                "category": "Карьерный рост",
+                "subtype": "нет трека до lead-роли",
+                "quote": "позиции senior/lead DevOps тут просто нет",
+            }
+        ],
         "best_practices": [
             {
                 "label": "Автономия и современный стек",
@@ -158,12 +188,24 @@ INTERVIEWS: list[dict] = [
             "нет вообще. — Что могло бы удержать? — Зафиксировать процент хотя бы на год "
             "вперёд и не менять план в середине квартала."
         ),
-        "exit_reason": ExitReason.MONEY,
+        "primary_category": "Компенсация",
         "risk_zone": RiskZone.HIGH,
-        "pain_points": [
-            {"label": "Снижение бонусного процента", "mentions": 3},
-            {"label": "План меняется в середине периода", "mentions": 2},
-            {"label": "Нет обратной связи по развитию", "mentions": 1},
+        "categories": [
+            {
+                "category": "Компенсация",
+                "subtype": "снижение бонусного процента",
+                "quote": "процент с продажи наоборот срезают",
+            },
+            {
+                "category": "Процессы и согласования",
+                "subtype": "план меняется в середине периода",
+                "quote": "не менять план в середине квартала",
+            },
+            {
+                "category": "Карьерный рост",
+                "subtype": "нет обратной связи по развитию",
+                "quote": "обратной связи по развитию нет вообще",
+            },
         ],
         "best_practices": [],
         "improvement_suggestions": [
@@ -186,11 +228,19 @@ INTERVIEWS: list[dict] = [
             "изменить решение? — Понятные критерии перехода SDR → AE и хотя бы один слот "
             "в квартал."
         ),
-        "exit_reason": ExitReason.CAREER,
+        "primary_category": "Карьерный рост",
         "risk_zone": RiskZone.MEDIUM,
-        "pain_points": [
-            {"label": "Нет прозрачного перехода SDR → AE", "mentions": 3},
-            {"label": "AE-позиции закрываются извне", "mentions": 2},
+        "categories": [
+            {
+                "category": "Карьерный рост",
+                "subtype": "нет перехода SDR → AE",
+                "quote": "хотел вырасти в Account Executive, но позиции не освобождаются",
+            },
+            {
+                "category": "Карьерный рост",
+                "subtype": "AE-позиции закрываются извне",
+                "quote": "новых AE берут снаружи",
+            },
         ],
         "best_practices": [
             {
@@ -219,11 +269,19 @@ INTERVIEWS: list[dict] = [
             "руководителя или хотя бы договориться заранее о критериях по сделке, а не "
             "постфактум."
         ),
-        "exit_reason": ExitReason.CLIMATE,
+        "primary_category": "Проблемы с руководством",
         "risk_zone": RiskZone.HIGH,
-        "pain_points": [
-            {"label": "Микроменеджмент и переделки решений руководителем", "mentions": 4},
-            {"label": "Критерии успеха не фиксируются заранее", "mentions": 2},
+        "categories": [
+            {
+                "category": "Проблемы с руководством",
+                "subtype": "микроменеджмент",
+                "quote": "Постоянно переделывает мои сделки по-своему",
+            },
+            {
+                "category": "Проблемы с руководством",
+                "subtype": "критерии не фиксируются заранее",
+                "quote": "заранее не говорит, чего ждёт, а после — только критика",
+            },
         ],
         "best_practices": [
             {
@@ -250,11 +308,19 @@ INTERVIEWS: list[dict] = [
             "Что могло бы удержать? — Либо больше людей в команду, либо честно признать, "
             "что нагрузка выше нормы, и пересмотреть KPI."
         ),
-        "exit_reason": ExitReason.CLIMATE,
+        "primary_category": "Перегрузка и выгорание",
         "risk_zone": RiskZone.HIGH,
-        "pain_points": [
-            {"label": "Хроническая перегрузка без роста штата", "mentions": 3},
-            {"label": "Руководитель на связи только в авралах", "mentions": 2},
+        "categories": [
+            {
+                "category": "Перегрузка и выгорание",
+                "subtype": "хроническая перегрузка без роста штата",
+                "quote": "Нагрузка выросла в два раза, а людей не добавили",
+            },
+            {
+                "category": "Проблемы с руководством",
+                "subtype": "руководитель на связи только в авралах",
+                "quote": "руководитель обычно на связи только когда что-то горит",
+            },
         ],
         "best_practices": [
             {
@@ -281,11 +347,19 @@ INTERVIEWS: list[dict] = [
             "поменялось. — Что могло бы удержать? — Реальные управленческие полномочия и "
             "бюджет на изменения в процессах."
         ),
-        "exit_reason": ExitReason.UNFULFILLMENT,
+        "primary_category": "Карьерный рост",
         "risk_zone": RiskZone.MEDIUM,
-        "pain_points": [
-            {"label": "Роль тимлида без управленческих полномочий", "mentions": 3},
-            {"label": "Обещания без изменений в течение года", "mentions": 2},
+        "categories": [
+            {
+                "category": "Карьерный рост",
+                "subtype": "роль без управленческих полномочий",
+                "quote": "по факту всё ещё разбираю тикеты наравне со всеми",
+            },
+            {
+                "category": "Карьерный рост",
+                "subtype": "обещания без изменений",
+                "quote": "Обещали пересмотреть роль, но за год ничего не поменялось",
+            },
         ],
         "best_practices": [
             {"label": "Авторитет и доверие команды", "quote": "меня уважают, прислушиваются"}
@@ -308,9 +382,15 @@ INTERVIEWS: list[dict] = [
             "порядке, грех жаловаться. — Что могло бы удержать? — Если бы здесь появилась "
             "позиция HRD или замдиректора по персоналу, я бы, наверное, осталась."
         ),
-        "exit_reason": ExitReason.CAREER,
+        "primary_category": "Карьерный рост",
         "risk_zone": RiskZone.LOW,
-        "pain_points": [{"label": "Нет управленческой HR-позиции для роста", "mentions": 1}],
+        "categories": [
+            {
+                "category": "Карьерный рост",
+                "subtype": "нет управленческой HR-позиции",
+                "quote": "следующий шаг, которого здесь пока нет",
+            }
+        ],
         "best_practices": [
             {
                 "label": "HR реально влияет на решения",
@@ -335,10 +415,14 @@ INTERVIEWS: list[dict] = [
             "адекватный, не душнит с правками. — Что могло бы удержать? — Пересмотр "
             "ставки под новый объём обязанностей, а не просто «спасибо, ты молодец»."
         ),
-        "exit_reason": ExitReason.MONEY,
+        "primary_category": "Компенсация",
         "risk_zone": RiskZone.MEDIUM,
-        "pain_points": [
-            {"label": "Ставка не пересматривалась при росте объёма задач", "mentions": 2}
+        "categories": [
+            {
+                "category": "Компенсация",
+                "subtype": "ставка не растёт с нагрузкой",
+                "quote": "Ставка не менялась полтора года, хотя объём задач вырос",
+            }
         ],
         "best_practices": [
             {
@@ -366,9 +450,15 @@ INTERVIEWS: list[dict] = [
             "Что могло бы удержать? — Стабильный список приоритетов хотя бы на две "
             "недели вперёд и прозрачность, почему приоритеты вообще меняются."
         ),
-        "exit_reason": ExitReason.CLIMATE,
+        "primary_category": "Проблемы с руководством",
         "risk_zone": RiskZone.MEDIUM,
-        "pain_points": [{"label": "Частая смена приоритетов без объяснений", "mentions": 4}],
+        "categories": [
+            {
+                "category": "Проблемы с руководством",
+                "subtype": "частая смена приоритетов без объяснений",
+                "quote": "В понедельник говорят делать одно, в среду — уже совсем другое",
+            }
+        ],
         "best_practices": [
             {
                 "label": "Свобода в выборе аналитических инструментов",
@@ -415,9 +505,9 @@ def seed() -> None:
             session.add(
                 ExitAnalysis(
                     interview_id=interview.id,
-                    exit_reason=item["exit_reason"],
+                    primary_category=item["primary_category"],
                     risk_zone=item["risk_zone"],
-                    pain_points=item["pain_points"],
+                    categories=item["categories"],
                     best_practices=item["best_practices"],
                     improvement_suggestions=item["improvement_suggestions"],
                     sentiment_arc=item["sentiment_arc"],

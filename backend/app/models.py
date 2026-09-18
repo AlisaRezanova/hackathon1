@@ -4,13 +4,16 @@ FROZEN once both feature owners start working: schema changes go through
 `make reset-data` (drop + `Base.metadata.create_all()` + `scripts/seed.py`),
 never through migrations. See hackathon-vibecoding-guide.md ("Швы").
 
-Domain: Exit Interview Intelligence. `ExitInterview` holds one raw,
-anonymized transcript (the input dataset from the assignment); `ExitAnalysis`
-holds the structured "problem passport" produced from it (the output
-contract: exit_reason / pain_points / best_practices / risk_zone /
-improvement_suggestions, plus a sentiment_arc). `scripts/seed.py` fills both
-tables with ready-made demo data, so the `analytics` feature never has to
-wait on the `interviews` feature's live pipeline to produce anything.
+Domain: Exit Interview Intelligence. `ExitInterview` holds one transcript —
+either pre-seeded, or produced live by Kostya's AI-interviewer chat (a short
+fixed intro, then LLM-driven follow-ups). `ExitAnalysis` holds the
+structured "problem passport" produced from it: a single top-line
+`primary_category` plus `categories` — the normalized/clustered breakdown
+("Проблемы с руководством" / "нет роста" / ... with subtypes and supporting
+quotes) that Alisa's `analytics` feature aggregates into the org-wide
+dashboard and drill-downs. `scripts/seed.py` fills both tables with
+ready-made demo data, so `analytics` never has to wait on `interviews`' live
+pipeline to produce anything.
 """
 
 import enum
@@ -22,17 +25,15 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base
 
 
-class ExitReason(enum.StrEnum):
-    MONEY = "money"
-    CAREER = "career"
-    CLIMATE = "climate"
-    UNFULFILLMENT = "unfulfillment"
-
-
 class RiskZone(enum.StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
+
+
+class InterviewSource(enum.StrEnum):
+    SEED = "seed"  # pre-loaded demo transcript
+    CHAT = "chat"  # produced live by the AI-interviewer chat
 
 
 class Department(Base):
@@ -45,7 +46,7 @@ class Department(Base):
 
 
 class ExitInterview(Base):
-    """One raw, anonymized exit-interview transcript (the input dataset)."""
+    """One anonymized exit-interview transcript (seeded, or from the chat)."""
 
     __tablename__ = "exit_interviews"
 
@@ -55,6 +56,9 @@ class ExitInterview(Base):
     department_id: Mapped[int] = mapped_column(ForeignKey("departments.id"))
     interview_date: Mapped[date]
     transcript: Mapped[str] = mapped_column(Text)
+    source: Mapped[InterviewSource] = mapped_column(
+        Enum(InterviewSource, name="interview_source"), default=InterviewSource.SEED
+    )
 
     department: Mapped[Department] = relationship(back_populates="interviews")
     analysis: Mapped["ExitAnalysis | None"] = relationship(
@@ -66,17 +70,19 @@ class ExitAnalysis(Base):
     """Structured "problem passport" produced from one transcript.
 
     JSON columns hold small, UI-shaped structures rather than normalized
-    tables — matches the assignment's output contract 1:1 and both features
-    only ever read/write it as JSON, never query inside it.
+    tables — both features only ever read/write them as JSON, never query
+    inside them. `categories` is intentionally free-text labels (not a fixed
+    enum): the assignment expects the set of reasons to grow as new ones
+    turn up in the data, not to be locked to a handful of buckets.
     """
 
     __tablename__ = "exit_analyses"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     interview_id: Mapped[int] = mapped_column(ForeignKey("exit_interviews.id"), unique=True)
-    exit_reason: Mapped[ExitReason] = mapped_column(Enum(ExitReason, name="exit_reason"))
+    primary_category: Mapped[str] = mapped_column(String(80))  # top-1 reason, e.g. "Компенсация"
     risk_zone: Mapped[RiskZone] = mapped_column(Enum(RiskZone, name="risk_zone"))
-    pain_points: Mapped[list] = mapped_column(JSON)  # [{"label": str, "mentions": int}]
+    categories: Mapped[list] = mapped_column(JSON)  # [{"category","subtype","quote"}]
     best_practices: Mapped[list] = mapped_column(JSON)  # [{"label": str, "quote": str}]
     improvement_suggestions: Mapped[list] = mapped_column(JSON)  # list[str], >= 3 items
     sentiment_arc: Mapped[list] = mapped_column(JSON)  # list[float] in [-1, 1], over the dialogue
