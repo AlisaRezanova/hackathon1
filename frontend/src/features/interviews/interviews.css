@@ -3,9 +3,10 @@
 
 .iv-layout {
   display: grid;
-  grid-template-columns: minmax(0, 640px);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
   align-items: start;
+  max-width: 760px;
 }
 
 /* Second column appears once there's room for it without cramping the
@@ -13,8 +14,21 @@
    worth saying there instead of a decorative filler. */
 @media (min-width: 1080px) {
   .iv-layout {
-    grid-template-columns: minmax(0, 640px) minmax(240px, 300px);
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+    max-width: 1080px;
   }
+}
+
+/* The chat card reads as a real, present window rather than a shrink-wrapped
+   box floating in a mostly-empty page: a floor on height, header/composer
+   pinned to top/bottom, the transcript growing to fill the space between. */
+.iv-layout .ui-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 540px;
+  /* No effect once the transcript (flex: 1) claims the leftover room —
+     only centers single-block content like the "analyzing" spinner. */
+  justify-content: center;
 }
 
 /* A ledger ruler, not a SaaS step-dot tracker: this is a real bounded
@@ -50,7 +64,9 @@
   flex-direction: column;
   gap: 12px;
   margin-bottom: 18px;
-  max-height: 50vh;
+  flex: 1;
+  min-height: 0;
+  max-height: 55vh;
   overflow-y: auto;
   padding-right: 4px;
 }
