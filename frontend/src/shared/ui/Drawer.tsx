@@ -10,6 +10,18 @@ function useEscapeToClose(onClose: () => void) {
   }, [onClose])
 }
 
+/** Prevents the page behind the drawer from scrolling — only the drawer's
+ * own content scrolls while it's open. */
+function useBodyScrollLock() {
+  useEffect(() => {
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [])
+}
+
 export function Drawer({
   title,
   onClose,
@@ -22,6 +34,7 @@ export function Drawer({
   children: ReactNode
 }) {
   useEscapeToClose(onClose)
+  useBodyScrollLock()
   return (
     <div className="ui-overlay" onClick={onClose} role="presentation">
       <div

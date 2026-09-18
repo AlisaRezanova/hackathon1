@@ -41,3 +41,31 @@ export interface CategoryDrilldown {
   summary: string
   generated_by: 'llm' | 'heuristic'
 }
+
+export interface CategoryAdvice {
+  category: string
+  solutions: string[]
+  generated_by: 'llm' | 'heuristic'
+}
+
+export interface InterviewListItem {
+  id: number
+  employee_alias: string
+  position: string
+  department: string
+  interview_date: string
+  primary_category: string
+  risk_zone: 'low' | 'medium' | 'high'
+}
+
+export interface DepartmentDrilldown {
+  department: string
+  total: number
+  low: number
+  medium: number
+  high: number
+  high_percent: number
+  top_categories: CategoryShare[]
+  summary: string
+  generated_by: 'llm' | 'heuristic'
+}
