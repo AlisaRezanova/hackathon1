@@ -1,143 +1,41 @@
-/* Scoped styles for the `analytics` feature — prefixed classes so nothing
-   collides with shared/ui or other features. */
+.analytics-dashboard { display: grid; gap: 22px; max-width: 1320px; }
+.analytics-dashboard > .ui-card { padding: clamp(24px, 2.8vw, 38px); }
+.analytics-bars { display: flex; flex-direction: column; }
+.analytics-bar-row { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 14px; width: 100%; padding: 15px 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; color: inherit; cursor: pointer; text-align: left; }
+.analytics-bar-row:first-child { padding-top: 2px; border-top: 0; }
+.analytics-bar-row:last-child { padding-bottom: 0; }
+.analytics-bar-rank { color: var(--line-strong); font-size: 12px; font-variant-numeric: tabular-nums; }
+.analytics-bar-main { min-width: 0; }
+.analytics-bar-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.analytics-bar-name { color: var(--ink-deep); font-size: 14px; font-weight: 590; }
+.analytics-bar-meta { flex: 0 0 auto; color: var(--ink-soft); font-size: 12px; white-space: nowrap; }
+.analytics-bar-meta strong { color: var(--ink-deep); font-size: 14px; font-weight: 620; }
+.analytics-bar-track { height: 5px; overflow: hidden; border-radius: 99px; background: #e7eeeb; }
+.analytics-bar-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width .35s ease, background .18s ease; }
+.analytics-bar-row:first-child .analytics-bar-fill { background: var(--coral); }
+.analytics-bar-row:hover .analytics-bar-fill { background: var(--ink-deep); }
+.analytics-bar-row:focus-visible { outline: 3px solid rgba(45,138,112,.35); outline-offset: 5px; }
 
-.analytics-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
+.analytics-dashboard .ui-stat-card:nth-child(2) .ui-stat-card__value { color: var(--coral); }
+.analytics-dashboard .ui-stat-card:nth-child(3) .ui-stat-card__value { color: var(--danger); }
+.analytics-dashboard .ui-table td:first-child { color: var(--ink-deep); font-weight: 590; }
 
-.analytics-bar-row {
-  display: block;
-  width: 100%;
-  text-align: left;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-  border-radius: var(--radius-sm);
-}
+.analytics-summary-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.analytics-drawer-summary { margin-bottom: 26px; padding: 16px 17px; border-left: 3px solid var(--coral); border-radius: 0 13px 13px 0; background: var(--paper); color: var(--ink-soft); font-size: 13.5px; line-height: 1.6; }
+.analytics-section-title { margin: 0 0 12px; color: var(--ink-deep); font-size: 13px; font-weight: 650; letter-spacing: 0; text-transform: none; }
+.analytics-subtypes { display: flex; flex-direction: column; margin-bottom: 28px; }
+.analytics-subtype-row { display: flex; justify-content: space-between; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+.analytics-subtype-count { display: grid; place-items: center; min-width: 26px; height: 22px; border-radius: 99px; background: var(--accent-tint); color: var(--accent-strong); font-size: 11px; font-variant-numeric: tabular-nums; }
+.analytics-quotes { display: flex; flex-direction: column; gap: 12px; }
+.analytics-quote { margin: 0; padding: 15px 16px; border: 0; border-radius: 14px; background: var(--paper); }
+.analytics-quote-text { color: var(--ink-deep); font-size: 13.5px; font-weight: 510; line-height: 1.5; }
+.analytics-quote-source { display: block; margin-top: 7px; color: var(--ink-soft); font-size: 11px; }
+.analytics-empty-cell { color: var(--ink-soft); }
 
-.analytics-bar-row:hover .analytics-bar-fill {
-  background: var(--accent-strong);
-}
-
-.analytics-bar-row:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.analytics-bar-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 6px;
-  gap: 12px;
-}
-
-.analytics-bar-name {
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.analytics-bar-meta {
-  color: var(--ink-soft);
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.analytics-bar-track {
-  height: 10px;
-  background: var(--accent-tint);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.analytics-bar-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 999px;
-  transition: background 0.15s ease;
-}
-
-.analytics-summary-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.analytics-drawer-summary {
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 12px 14px;
-  color: var(--ink-soft);
-  font-size: 14px;
-  line-height: 1.5;
-  margin-bottom: 20px;
-}
-
-.analytics-section-title {
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ink-soft);
-  margin: 0 0 10px;
-}
-
-.analytics-subtypes {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 24px;
-}
-
-.analytics-subtype-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  font-size: 14px;
-}
-
-.analytics-subtype-count {
-  color: var(--ink-soft);
-  font-variant-numeric: tabular-nums;
-}
-
-.analytics-quotes {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.analytics-quote {
-  border-left: 3px solid var(--accent);
-  padding: 4px 0 4px 12px;
-  margin: 0;
-}
-
-.analytics-quote-text {
-  font-style: italic;
-  color: var(--ink);
-}
-
-.analytics-quote-source {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--ink-soft);
-}
-
-.analytics-empty-cell {
-  color: var(--ink-soft);
+@media (max-width: 620px) {
+  .analytics-bar-row { grid-template-columns: 24px 1fr; gap: 8px; }
+  .analytics-bar-head { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .analytics-bar-meta { white-space: normal; }
 }
 
 .analytics-link-btn {

@@ -1,38 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { ToastProvider } from '../shared/ui/Toast'
 import { Home } from './Home'
-
-// Home aggregates the two real features (interviews + analytics) — mock
-// their api modules rather than hitting the network, same spirit as
-// shared/http.ts's own mock fallback.
-vi.mock('../features/analytics/api', () => ({
-  fetchAnalyticsSummary: vi.fn(async () => ({
-    data: {
-      total_interviews: 12,
-      category_breakdown: [{ category: 'Компенсация', count: 4, percent: 33 }],
-      department_risk: [
-        { department: 'Продажи', total: 3, low: 0, medium: 1, high: 2, high_percent: 67 },
-      ],
-    },
-    usedMock: false,
-  })),
-  fetchInterviews: vi.fn(async () => ({
-    data: [
-      {
-        id: 1,
-        employee_alias: 'Сотрудник #1',
-        position: 'Backend-разработчик',
-        department: 'Разработка',
-        interview_date: '2026-09-01',
-        primary_category: 'Карьерный рост',
-        risk_zone: 'medium',
-      },
-    ],
-    usedMock: false,
-  })),
-}))
 
 function renderHome() {
   return render(
@@ -45,21 +15,19 @@ function renderHome() {
 }
 
 describe('Home', () => {
-  it('shows aggregated stats and the recent interviews table once data loads', async () => {
+  it('renders the product entry point', async () => {
     renderHome()
-    expect(await screen.findByText('Компенсация')).toBeInTheDocument()
-    expect(screen.getByText('Сотрудник #1')).toBeInTheDocument()
-    expect(screen.getByText('Продажи')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Обзор exit-интервью' })).toBeInTheDocument()
+    expect(await screen.findByText('Основные причины ухода')).toBeInTheDocument()
   })
 
-  it('links the primary actions into the HR app routes (/app/*)', async () => {
+  it('links to both primary product scenarios', async () => {
     renderHome()
-    await screen.findByText('Компенсация')
-    expect(screen.getByText('Начать exit-интервью').closest('a')).toHaveAttribute(
+    expect(screen.getAllByRole('link', { name: /Новое интервью/i })[0]).toHaveAttribute(
       'href',
       '/app/interviews',
     )
-    expect(screen.getByText('Открыть аналитику').closest('a')).toHaveAttribute(
+    expect((await screen.findAllByRole('link', { name: /Открыть аналитику/i }))[0]).toHaveAttribute(
       'href',
       '/app/analytics',
     )

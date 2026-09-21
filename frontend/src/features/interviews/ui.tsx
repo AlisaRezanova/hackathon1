@@ -9,6 +9,7 @@ import { Card } from '../../shared/ui/Card'
 import { Drawer } from '../../shared/ui/Drawer'
 import { Field, Input, Select, TextArea } from '../../shared/ui/Form'
 import { Header } from '../../shared/ui/Header'
+import { Icon } from '../../shared/ui/Icons'
 import { Modal } from '../../shared/ui/Modal'
 import { EmptyState, ErrorState, LoadingState } from '../../shared/ui/States'
 import { useToast } from '../../shared/ui/toastContext'
@@ -63,15 +64,12 @@ interface AnsweredTurn extends ChatTurn {
   generated_by: GeneratedBy
 }
 
-// The little dot + label under each question names which of the three
-// sources asked it — the fixed script, the live model, or the scripted
-// fallback used when the model isn't available — so the colour carries
-// that distinction instead of decorating the bubble.
-function questionMeta(kind: ChatResponse['kind'], generatedBy: GeneratedBy) {
-  if (kind === 'base') return { text: 'базовый вопрос', className: 'iv-bubble__meta--base' }
-  return generatedBy === 'llm'
-    ? { text: 'уточняющий · LLM', className: 'iv-bubble__meta--llm' }
-    : { text: 'уточняющий · резерв', className: 'iv-bubble__meta--heuristic' }
+// The label under each question names which of the three sources asked it —
+// the fixed script, the live model, or the scripted fallback used when the
+// model isn't available.
+function questionMeta(kind: ChatResponse['kind'], generatedBy: GeneratedBy): string {
+  if (kind === 'base') return 'базовый вопрос'
+  return generatedBy === 'llm' ? 'уточняющий · LLM' : 'уточняющий · резерв'
 }
 
 /**
@@ -215,24 +213,23 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
   return (
     <>
       <Header
-        eyebrow={employeeMode ? undefined : 'Фича: interviews'}
-        title="Exit-интервью → паспорт проблемы"
+        eyebrow={employeeMode ? undefined : 'Конфиденциальный разговор'}
+        title="Exit-интервью"
+        description="AI ведёт разговор бережно, уточняет факты и сохраняет формулировки сотрудника без домыслов."
         actions={
           employeeMode ? undefined : (
             <>
               <Button variant="primary" onClick={openEmployeeLinkModal}>
                 Ссылка для сотрудника
               </Button>
-              <div className="iv-header-utility">
-                <Button variant="ghost" onClick={() => setHistoryOpen(true)}>
-                  История интервью
+              <Button variant="secondary" onClick={() => setHistoryOpen(true)}>
+                <Icon name="history" /> История
+              </Button>
+              {phase === 'chat' && (
+                <Button variant="ghost" onClick={() => setPasteOpen(true)}>
+                  Вставить готовый транскрипт
                 </Button>
-                {phase === 'chat' && (
-                  <Button variant="ghost" onClick={() => setPasteOpen(true)}>
-                    Вставить транскрипт
-                  </Button>
-                )}
-              </div>
+              )}
             </>
           )
         }
@@ -243,23 +240,29 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
             {phase === 'chat' && (
               <>
                 <div className="iv-progress">
-                  <span className="iv-progress__label">
+                  <span>
                     Вопрос {Math.min(progressCurrent, TOTAL_QUESTIONS_HINT)} · до{' '}
                     {TOTAL_QUESTIONS_HINT} вопросов
                   </span>
                   <div
-                    className="iv-progress__track"
+                    className="iv-progress__dots"
                     role="progressbar"
                     aria-valuemin={0}
                     aria-valuemax={TOTAL_QUESTIONS_HINT}
                     aria-valuenow={Math.min(progressCurrent, TOTAL_QUESTIONS_HINT)}
                   >
-                    <div
-                      className="iv-progress__fill"
-                      style={{
-                        width: `${(Math.min(progressCurrent, TOTAL_QUESTIONS_HINT) / TOTAL_QUESTIONS_HINT) * 100}%`,
-                      }}
-                    />
+                    {Array.from({ length: TOTAL_QUESTIONS_HINT }, (_, i) => (
+                      <span
+                        key={i}
+                        className={`iv-progress__dot${
+                          i < answeredCount
+                            ? ' iv-progress__dot--done'
+                            : i === answeredCount
+                              ? ' iv-progress__dot--current'
+                              : ''
+                        }`}
+                      />
+                    ))}
                   </div>
                 </div>
 
@@ -272,17 +275,14 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
                       guard, the same text briefly shows twice (once as
                       history, once as a stale "current" bubble) for the
                       2-3s it takes the next question to arrive. */}
-                  {currentStep?.question &&
-                    !loadingStep &&
-                    (() => {
-                      const meta = questionMeta(currentStep.kind, currentStep.generated_by)
-                      return (
-                        <div className="iv-bubble iv-bubble--question">
-                          {currentStep.question}
-                          <span className={`iv-bubble__meta ${meta.className}`}>{meta.text}</span>
-                        </div>
-                      )
-                    })()}
+                  {currentStep?.question && !loadingStep && (
+                    <div className="iv-bubble iv-bubble--question">
+                      {currentStep.question}
+                      <span className="iv-bubble__meta">
+                        {questionMeta(currentStep.kind, currentStep.generated_by)}
+                      </span>
+                    </div>
+                  )}
                   {loadingStep && (
                     <div className="iv-typing" aria-label="Печатает">
                       <span />
@@ -295,14 +295,9 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
                 {currentStep?.quick_replies && !loadingStep && (
                   <div className="iv-quick-replies">
                     {currentStep.quick_replies.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        className="iv-chip"
-                        onClick={() => submitAnswer(option)}
-                      >
+                      <Button key={option} variant="secondary" onClick={() => submitAnswer(option)}>
                         {option}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
@@ -343,8 +338,31 @@ export function InterviewsPage({ employeeMode = false }: { employeeMode?: boolea
             />
           </Card>
         )}
-
-        <InterviewSidePanel employeeMode={employeeMode} />
+        <aside className="iv-context">
+          <div className="iv-context__label">Как проходит разговор</div>
+          <div className="iv-context__step">
+            <span>1</span>
+            <div>
+              <strong>Контекст</strong>
+              <small>Отдел, роль и причина решения</small>
+            </div>
+          </div>
+          <div className="iv-context__step">
+            <span>2</span>
+            <div>
+              <strong>Уточнения</strong>
+              <small>AI запрашивает пример и доказательство</small>
+            </div>
+          </div>
+          <div className="iv-context__step">
+            <span>3</span>
+            <div>
+              <strong>Паспорт</strong>
+              <small>Причины, цитаты и гипотезы решения</small>
+            </div>
+          </div>
+          <p>Обычно достаточно 5–7 минут. Ответы можно давать в свободной форме.</p>
+        </aside>
       </div>
 
       {!employeeMode && pasteOpen && (
@@ -396,50 +414,12 @@ function EmployeeLinkModal({ link, onClose }: { link: string; onClose: () => voi
   )
 }
 
-/**
- * Fills the space beside the chat on wide screens with something worth
- * reading instead of leaving it empty — what the badges under each question
- * mean for HR, or a plain-language privacy note for the employee who just
- * clicked an unfamiliar link. Hidden below ~1080px (see interviews.css).
- */
-function InterviewSidePanel({ employeeMode }: { employeeMode: boolean }) {
-  if (employeeMode) {
-    return (
-      <aside className="iv-side">
-        <h2 className="iv-side__title">Об этом интервью</h2>
-        <ol className="iv-side__steps">
-          <li>Это разговор с ИИ-интервьюером — представляться по имени не нужно.</li>
-          <li>Обычно 4–6 коротких вопросов, около 3–5 минут.</li>
-          <li>
-            Ответы смотрит HR-команда, чтобы находить системные проблемы — не для оценки лично вас.
-          </li>
-        </ol>
-      </aside>
-    )
-  }
-  return (
-    <aside className="iv-side">
-      <h2 className="iv-side__title">Как устроено интервью</h2>
-      <ol className="iv-side__steps">
-        <li>Три обязательных вопроса — отдел, должность, главная причина ухода.</li>
-        <li>До трёх уточняющих вопросов, если причина требует уточнения.</li>
-        <li>Готовый паспорт проблемы: категория, риск и гипотезы для HR.</li>
-      </ol>
-      <p className="iv-side__note">
-        Метка под уточняющим вопросом показывает источник: <strong>LLM</strong> — вопрос придумала
-        модель, <strong>резерв</strong> — заготовленный вопрос на случай, если модель недоступна.
-      </p>
-    </aside>
-  )
-}
-
 function ChatTurnBubbles({ turn }: { turn: AnsweredTurn }) {
-  const meta = questionMeta(turn.kind, turn.generated_by)
   return (
     <>
       <div className="iv-bubble iv-bubble--question">
         {turn.question}
-        <span className={`iv-bubble__meta ${meta.className}`}>{meta.text}</span>
+        <span className="iv-bubble__meta">{questionMeta(turn.kind, turn.generated_by)}</span>
       </div>
       <div className="iv-bubble iv-bubble--answer">{turn.answer}</div>
     </>
@@ -534,7 +514,7 @@ function PassportCard({
         </Button>
         {showDashboardLink && (
           <Link to="/app/analytics" style={{ textDecoration: 'none' }}>
-            <Button variant="ghost">Смотреть на дашборде →</Button>
+            <Button variant="ghost">Смотреть в аналитике <Icon name="arrow" /></Button>
           </Link>
         )}
       </div>
