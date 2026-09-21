@@ -19,7 +19,7 @@ services:
       retries: 10
 
   backend:
-    build: ./backend
+    build: ../backend
     restart: unless-stopped
     environment:
       POSTGRES_HOST: db
@@ -36,8 +36,8 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./backend/app:/app/app
-      - ./backend/scripts:/app/scripts
+      - ../backend/app:/app/app
+      - ../backend/scripts:/app/scripts
 
 volumes:
   db_data:

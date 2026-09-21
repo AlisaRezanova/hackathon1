@@ -12,7 +12,9 @@ backend/*.egg-info/
 
 # Env
 .env
+.env.prod
 !.env.example
+!.env.prod.example
 
 # Editors / OS
 .DS_Store

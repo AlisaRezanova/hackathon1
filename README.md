@@ -30,10 +30,27 @@ http://localhost:8000/docs
 | `make seed`         | создаёт таблицы (если их нет) и засеивает демоданные, идемпотентно |
 | `make reset-data`   | сбрасывает БД (volume) и поднимает стек заново с демоданными      |
 | `make down`         | останавливает все контейнеры                                     |
+| `make prod`         | прод: поднимает db+backend из `infra/docker-compose.prod.yml`, накатывает схему, собирает фронт в `frontend/dist` |
+| `make prod-down`    | останавливает прод-контейнеры (данные БД сохраняются)             |
+| `make prod-logs`    | логи прод-backend                                                |
 | `make test`         | тесты backend (pytest) + frontend (vitest)                       |
 | `make lint`         | линт backend (ruff) + frontend (oxlint)                          |
 | `make fmt`          | автоформат backend (ruff) + frontend (prettier)                  |
 | `make check`        | `test` + `lint` — гонять после каждой фичи                       |
+
+## Деплой (prod)
+
+Compose-файлы и конфиг nginx лежат в [`infra/`](./infra): `docker-compose.yaml` — dev,
+`docker-compose.prod.yml` — прод, `nginx/hackathon.conf` — шаблон конфига nginx.
+
+```bash
+cp infra/.env.prod.example infra/.env.prod   # заполнить POSTGRES_PASSWORD, CORS_ORIGINS и т.д.
+make prod                                    # backend+db в Docker, фронт -> frontend/dist
+```
+
+Затем скопировать `frontend/dist` в root nginx (например `/var/www/hackathon`) и подключить
+`infra/nginx/hackathon.conf` — инструкции в самом файле. `make prod` заливает и демоданные
+(`scripts.seed` — единственное, что создаёт таблицы).
 
 ## Структура
 
