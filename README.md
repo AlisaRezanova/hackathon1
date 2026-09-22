@@ -55,9 +55,11 @@ http://localhost:8000/docs
 | `make seed`         | создаёт таблицы (если их нет) и засеивает демоданные, идемпотентно |
 | `make reset-data`   | сбрасывает БД (volume) и поднимает стек заново с демоданными      |
 | `make down`         | останавливает все контейнеры                                     |
-| `make prod`         | прод: поднимает db+backend из `infra/docker-compose.prod.yml`, накатывает схему, собирает фронт в `frontend/dist` |
+| `make prod`         | прод локально: поднимает db+backend+frontend из `infra/docker-compose.prod.yml` (фронт собирается внутри docker build), накатывает схему |
 | `make prod-down`    | останавливает прод-контейнеры (данные БД сохраняются)             |
 | `make prod-logs`    | логи прод-backend                                                |
+| `make deploy`       | выкатить весь проект на сервер (`DEPLOY_HOST`) по rsync + поднять там прод-стек (+ deploy-оверлей) |
+| `make deploy-logs`  | логи прод-backend на сервере                                     |
 | `make test`         | тесты backend (pytest) + frontend (vitest)                       |
 | `make lint`         | линт backend (ruff) + frontend (oxlint)                          |
 | `make fmt`          | автоформат backend (ruff) + frontend (prettier)                  |
@@ -65,17 +67,52 @@ http://localhost:8000/docs
 
 ## Деплой (prod)
 
-Compose-файлы и конфиг nginx лежат в [`infra/`](./infra): `docker-compose.yaml` — dev,
-`docker-compose.prod.yml` — прод, `nginx/hackathon.conf` — шаблон конфига nginx.
+Compose-файлы и конфиг nginx лежат в [`infra/`](./infra):
+- `docker-compose.yaml` — dev;
+- `docker-compose.prod.yml` — прод (db + backend + `frontend` = свой образ nginx,
+  собранный из `infra/Dockerfile.frontend`: фронт собирается внутри docker build,
+  локальный npm не нужен); самодостаточен, годится и для локальной проверки;
+- `docker-compose.deploy.yml` — оверлей поверх прод-файла, только для реального
+  сервера (подключает `frontend` к сети внешнего reverse-proxy, см. ниже);
+- `nginx/hackathon.conf` — конфиг nginx, встраивается в образ фронта при сборке.
+
+### Локально (просто поднять прод-стек рядом с dev)
 
 ```bash
 cp infra/.env.prod.example infra/.env.prod   # заполнить POSTGRES_PASSWORD, CORS_ORIGINS и т.д.
-make prod                                    # backend+db в Docker, фронт -> frontend/dist
+make prod                                    # db+backend+frontend в Docker, схема+демоданные
+# фронт на http://localhost:18080
 ```
 
-Затем скопировать `frontend/dist` в root nginx (например `/var/www/hackathon`) и подключить
-`infra/nginx/hackathon.conf` — инструкции в самом файле. `make prod` заливает и демоданные
-(`scripts.seed` — единственное, что создаёт таблицы).
+### На сервер (уже настроено, `make deploy` обновляет существующий стек)
+
+Сервер (`DEPLOY_HOST=hr.ec9.ru`, каталог `/opt/hackathon1`) уже держит свой
+reverse-proxy (Caddy) под другой проект на 80/443 — свой nginx/certbot туда не
+встанет, порт физически занят. Поэтому наш `frontend`-контейнер порт наружу не
+публикует, а декларативно (через `infra/docker-compose.deploy.yml`) подключается
+ко внутренней docker-сети того Caddy под именем `hackathon-frontend`. В Caddyfile
+на сервере уже настроен (один раз, вручную) site-блок:
+
+```
+hr.ec9.ru {
+    reverse_proxy hackathon-frontend:80
+}
+```
+
+Обновить прод после изменений — из репозитория:
+
+```bash
+make deploy          # rsync проекта на DEPLOY_HOST + docker compose up --build + seed
+```
+
+`infra/.env.prod` на сервере создан вручную один раз и никогда не перезаписывается
+rsync'ом (исключён явно). Имя compose-проекта (`hackathon1`, задано в
+`infra/docker-compose.prod.yml`) и путь (`/opt/hackathon1`) совпадают с тем, что уже
+реально поднято на сервере — `make deploy` обновляет существующие контейнеры, а не
+поднимает рядом второй параллельный стек. `make deploy` идемпотентен: повторный
+запуск пересобирает и передеплоивает только изменившиеся образы, сетевой алиас
+переустанавливается декларативно при каждом `up` (никакой ручной команды после
+пересоздания контейнера не требуется).
 
 ## Структура
 

@@ -67,15 +67,14 @@ reset-data: ## сброс демоданных: снести volume БД и по
 	$(COMPOSE) down -v
 	$(MAKE) back-up
 
-# Прод: backend+db в Docker (без --reload и без монтирования исходников),
-# фронт собирается в frontend/dist с относительным API (/api идёт через nginx на
-# том же домене). Копирование dist в /var/www/hackathon и nginx — см. infra/nginx/hackathon.conf.
-prod: ## прод: собрать и поднять db+backend (infra/.env.prod), накатить схему, собрать фронт
+# Прод: db+backend+frontend(nginx, свой образ) в Docker (без --reload и без
+# монтирования исходников). Фронт собирается ВНУТРИ docker build (см.
+# infra/Dockerfile.frontend) — локальный npm не нужен. См. infra/docker-compose.prod.yml.
+prod: ## прод (локально): собрать и поднять db+backend+frontend (infra/.env.prod), накатить схему
 	@[ -f $(PROD_ENV) ] || { echo "Нет $(PROD_ENV): cp infra/.env.prod.example $(PROD_ENV) и заполните"; exit 1; }
 	$(COMPOSE_PROD) up -d --wait --build
 	$(COMPOSE_PROD) exec -T backend python -m scripts.seed
-	cd $(FRONTEND) && { [ -d node_modules ] || npm ci; } && VITE_API_BASE_URL= npm run build
-	@echo "Готово: фронт в $(FRONTEND)/dist — скопируйте в root nginx (например /var/www/hackathon)"
+	@echo "Готово: http://localhost:18080"
 
 prod-down: ## остановить прод-контейнеры (данные БД сохраняются)
 	$(COMPOSE_PROD) down
@@ -83,4 +82,28 @@ prod-down: ## остановить прод-контейнеры (данные �
 prod-logs: ## логи прод-backend
 	$(COMPOSE_PROD) logs -f backend
 
-.PHONY: help db-up back-up build down logs install seed dev dev-build test lint check fmt reset-data prod prod-down prod-logs
+# Деплой на сервер: rsync рабочего каталога + docker compose up там (прод-стек +
+# infra/docker-compose.deploy.yml — подключение frontend-контейнера к сети
+# существующего на сервере Caddy, см. README "Деплой (prod)"). Совпадает с тем,
+# что уже реально поднято на сервере: путь /opt/hackathon1, имя проекта
+# hackathon1 (задано в infra/docker-compose.prod.yml), алиас hackathon-frontend
+# (в Caddyfile уже настроен один раз вручную). infra/.env.prod на сервере
+# создаётся вручную и никогда не перезаписывается rsync'ом.
+DEPLOY_HOST     ?= hr.ec9.ru
+SSH             := ssh -o StrictHostKeyChecking=accept-new
+DEPLOY_PATH     := /opt/hackathon1
+DEPLOY_EXCLUDES := --exclude '.git' --exclude node_modules --exclude frontend/node_modules \
+  --exclude frontend/dist --exclude '.venv' --exclude backend/.venv --exclude __pycache__ \
+  --exclude '*.pyc' --exclude .pytest_cache --exclude .ruff_cache --exclude .DS_Store \
+  --exclude '.env' --exclude 'infra/.env.prod'
+COMPOSE_DEPLOY  := docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml -f infra/docker-compose.deploy.yml
+
+deploy: ## выкатить текущий рабочий каталог на сервер (см. DEPLOY_HOST) и поднять прод-стек
+	rsync -az --delete -e "$(SSH)" $(DEPLOY_EXCLUDES) ./ $(DEPLOY_HOST):$(DEPLOY_PATH)/
+	$(SSH) $(DEPLOY_HOST) 'cd $(DEPLOY_PATH) && $(COMPOSE_DEPLOY) up -d --wait --build'
+	$(SSH) $(DEPLOY_HOST) 'cd $(DEPLOY_PATH) && $(COMPOSE_DEPLOY) exec -T backend python -m scripts.seed'
+
+deploy-logs: ## логи бэка на сервере
+	$(SSH) $(DEPLOY_HOST) 'cd $(DEPLOY_PATH) && $(COMPOSE_DEPLOY) logs --tail=100 backend'
+
+.PHONY: help db-up back-up build down logs install seed dev dev-build test lint check fmt reset-data prod prod-down prod-logs deploy deploy-logs

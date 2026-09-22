@@ -1,17 +1,26 @@
-# Продакшен-стек: PostgreSQL + backend. Фронт собирается отдельно (npm run build)
-# и отдаётся nginx-ом с сервера, см. infra/nginx/hackathon.conf.
+# Продакшен-стек: PostgreSQL + backend + frontend (свой образ nginx, собранный
+# из infra/Dockerfile.frontend). Всё три сервиса — в одном Docker-compose
+# проекте, общаются по внутренней сети (сервис "backend" резолвится по имени),
+# наружу порты backend/db не публикуются.
+#
+# Этот файл самодостаточен и годится для локальной проверки прод-сборки
+# (`make prod`, фронт публикуется на 127.0.0.1:18080). Для реального деплоя на
+# сервер (где 80/443 уже держит чужой reverse-proxy) поверх накладывается
+# infra/docker-compose.deploy.yml — см. `make deploy` и README ("Деплой (prod)").
 #
 # Запуск из корня репозитория:
 #   cp infra/.env.prod.example infra/.env.prod   # и заполнить
-#   docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod up -d --build
+#   docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod up -d --wait --build
 #   docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod exec -T backend python -m scripts.seed
 #
-# Отличия от dev (docker-compose.yaml в корне): без --reload и без монтирования
-# исходников, БД не публикуется наружу, backend слушает только 127.0.0.1
-# (снаружи до него достучаться можно только через nginx).
+# Отличия от dev (infra/docker-compose.yaml): без --reload и без монтирования
+# исходников, БД не публикуется наружу, backend недоступен снаружи вообще
+# (внутрь стека достучаться можно только через frontend/nginx на /api/).
 
-# Явное имя проекта: контейнеры и тома не пересекутся с другими стеками на сервере.
-name: hackathon-prod
+# Явное имя проекта: совпадает с тем, что уже поднято на сервере (контейнеры
+# hackathon1-*), чтобы make deploy обновлял существующий стек, а не плодил
+# параллельный.
+name: hackathon1
 
 services:
   db:
@@ -43,11 +52,29 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:?Задайте CORS_ORIGINS в infra/.env.prod}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-deepseek/deepseek-v4-flash-0731}
-    ports:
-      # Порт можно поменять, если 8000 занят на сервере (и тогда же — proxy_pass в nginx).
-      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
     depends_on:
       db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: ""
+    restart: unless-stopped
+    ports:
+      # Локальная проверка прод-сборки: http://localhost:18080. На реальном
+      # сервере это не нужно (вход только через внешний reverse-proxy) — но
+      # 127.0.0.1-порт безвреден и там, поэтому не убираем через оверлей.
+      - "127.0.0.1:18080:80"
+    depends_on:
+      backend:
         condition: service_healthy
 
 volumes:

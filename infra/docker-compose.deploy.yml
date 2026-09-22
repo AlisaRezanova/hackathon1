@@ -1,0 +1,31 @@
+# Оверлей поверх infra/docker-compose.prod.yml — только для реального сервера
+# (DEPLOY_HOST в Makefile, `make deploy`). Сервер уже держит другой проект на
+# 80/443 через свой Caddy — свой nginx/certbot туда не встанет. Вместо этого
+# frontend-контейнер подключается ещё и к docker-сети того Caddy под именем
+# hackathon-frontend; в Caddyfile уже есть (настроено один раз вручную на
+# сервере, см. README) site-блок:
+#
+#   hr.ec9.ru {
+#       reverse_proxy hackathon-frontend:80
+#   }
+#
+# Сеть подключается декларативно через compose (а не отдельным `docker network
+# connect` в Makefile) — так `make deploy` падает с понятной ошибкой, если сеть
+# вдруг переименуют/удалят, вместо тихого "успеха" без реального подключения.
+#
+# Запуск (см. также `make deploy`):
+#   docker compose -f infra/docker-compose.prod.yml -f infra/docker-compose.deploy.yml \
+#     --env-file infra/.env.prod up -d --wait --build
+
+services:
+  frontend:
+    networks:
+      default: {}
+      sanitizer:
+        aliases:
+          - hackathon-frontend
+
+networks:
+  sanitizer:
+    external: true
+    name: sanitizer_default
